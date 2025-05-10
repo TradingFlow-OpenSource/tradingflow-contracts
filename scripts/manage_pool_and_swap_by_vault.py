@@ -264,7 +264,8 @@ def main():
         "VaultTKA",
         "vTKA",
         SWAP_ROUTER_ADDRESS,
-        price_oracle_address
+        price_oracle_address,
+        deployer,
     ).transact({'from': deployer, 'gas': 5000000})
     
     tx_receipt = w3.eth.wait_for_transaction_receipt(tx_hash)
@@ -281,7 +282,7 @@ def main():
     tx_hash = vault.functions.setTradingPair(token_b_address, 10000, 0).transact({'from': deployer})
     w3.eth.wait_for_transaction_receipt(tx_hash)
     
-    tx_hash = vault.functions.updateStrategySettings(True, 900).transact({'from': deployer})
+    tx_hash = vault.functions.setStrategyEnabled(True).transact({'from': deployer})
     w3.eth.wait_for_transaction_receipt(tx_hash)
     
     oracle_role = vault.functions.ORACLE_ROLE().call()
@@ -321,24 +322,24 @@ def main():
         print(f"TKB: {from_wei(token_amounts1[i])} (地址: {token_addresses1[i]})")
 
     # --- 13. Oracle信号: swap 所有 TKB 为 TKA ---
-    vault_tkb_balance = token_b.functions.balanceOf(vault_address).call()
-    print(f"\nOracle信号: swap 所有 TKB ({from_wei(vault_tkb_balance)}) 为 TKA...")
+    # vault_tkb_balance = token_b.functions.balanceOf(vault_address).call()
+    # print(f"\nOracle信号: swap 所有 TKB ({from_wei(vault_tkb_balance)}) 为 TKA...")
     
-    tx_hash = vault.functions.executeSellSignal(
-        token_b_address,
-        0, # 0表示全部
-        0  # 不设最小输出
-    ).transact({'from': deployer, 'gas': 5000000})
-    w3.eth.wait_for_transaction_receipt(tx_hash)
+    # tx_hash = vault.functions.executeSellSignal(
+    #     token_b_address,
+    #     0, # 0表示全部
+    #     0  # 不设最小输出
+    # ).transact({'from': deployer, 'gas': 5000000})
+    # w3.eth.wait_for_transaction_receipt(tx_hash)
 
-    # --- 14. 打印金库持仓信息 ---
-    print("\n--- 金库持仓信息（TKB->TKA后） ---")
-    portfolio = vault.functions.getPortfolioComposition().call()
-    base_asset_amount2, token_addresses2, token_amounts2 = portfolio
+    # # --- 14. 打印金库持仓信息 ---
+    # print("\n--- 金库持仓信息（TKB->TKA后） ---")
+    # portfolio = vault.functions.getPortfolioComposition().call()
+    # base_asset_amount2, token_addresses2, token_amounts2 = portfolio
     
-    print(f"TKA: {from_wei(base_asset_amount2)}")
-    for i in range(len(token_addresses2)):
-        print(f"TKB: {from_wei(token_amounts2[i])} (地址: {token_addresses2[i]})")
+    # print(f"TKA: {from_wei(base_asset_amount2)}")
+    # for i in range(len(token_addresses2)):
+    #     print(f"TKB: {from_wei(token_amounts2[i])} (地址: {token_addresses2[i]})")
 
     # # --- 15. 用户赎回全部 TKA，打印余额变化 ---
     # user_tka_before = token_a.functions.balanceOf(deployer).call()

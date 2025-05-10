@@ -59,7 +59,7 @@ def get_account(w3, key_or_account):
 def load_contracts(w3, vault_address):
     try:
         # 加载金库 ABI
-        vault_abi = load_abi(BASE_PATH / "artifacts/contracts/UniswapVault_bak.sol/OracleGuidedVault.json")
+        vault_abi = load_abi(BASE_PATH / "artifacts/contracts/UniswapVault.sol/OracleGuidedVault.json")
         vault = w3.eth.contract(address=normalize_address(vault_address), abi=vault_abi)
         
         # 获取基础资产地址
@@ -604,7 +604,7 @@ def update_strategy_settings(w3, vault, account, enabled):
             return False
         
         print(f"更新策略设置: 启用 = {enabled}")
-        settings_func = vault.functions.updateStrategySettings(enabled)
+        settings_func = vault.functions.setStrategyEnabled(enabled)
         receipt = send_transaction(w3, account, settings_func)
         
         if receipt.status == 1:
