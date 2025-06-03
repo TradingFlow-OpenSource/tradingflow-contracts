@@ -604,6 +604,7 @@ def update_strategy_settings(w3, vault, account, enabled):
             return False
         
         print(f"Updating strategy settings: Enabled = {enabled}")
+
         settings_func = vault.functions.setStrategyEnabled(enabled)
         receipt = send_transaction(w3, account, settings_func)
         
