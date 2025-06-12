@@ -1,0 +1,20 @@
+{
+  "name": "multi-vault",
+  "version": "1.0.0",
+  "description": "EVM multi-user vault system with Uniswap integration.",
+  "main": "index.js",
+  "scripts": {
+    "test": "hardhat test",
+    "deploy:vault": "hardhat run scripts/deployVault.ts"
+  },
+  "author": "TradingFlow Team",
+  "license": "MIT",
+  "devDependencies": {
+    "@nomicfoundation/hardhat-toolbox": "^3.0.0",
+    "typescript": "^5.0.0"
+  },
+  "dependencies": {
+    "@openzeppelin/contracts": "^4.9.0",
+    "dotenv": "^16.0.0"
+  }
+}

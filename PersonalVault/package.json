@@ -1,0 +1,21 @@
+{
+  "name": "personal-vault",
+  "version": "1.0.0",
+  "description": "EVM personal vault system for single-user vaults, with factory pattern.",
+  "main": "index.js",
+  "scripts": {
+    "test": "hardhat test",
+    "deploy:factory": "hardhat run scripts/deployFactory.ts",
+    "deploy:vault": "hardhat run scripts/createVault.ts"
+  },
+  "author": "TradingFlow Team",
+  "license": "MIT",
+  "devDependencies": {
+    "@nomicfoundation/hardhat-toolbox": "^5.0.0",
+    "typescript": "^5.8.3"
+  },
+  "dependencies": {
+    "@openzeppelin/contracts": "^5.3.0",
+    "dotenv": "^16.5.0"
+  }
+}
