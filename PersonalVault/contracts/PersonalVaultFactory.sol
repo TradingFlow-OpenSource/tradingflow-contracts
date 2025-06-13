@@ -2,9 +2,8 @@
 pragma solidity ^0.8.20;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
-import "@openzeppelin/contracts/access/AccessControl.sol";
+import "@openzeppelin/contracts/access/AccessControlEnumerable.sol";
+import "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import "./PersonalVault.sol";
 
 /**
@@ -12,7 +11,7 @@ import "./PersonalVault.sol";
  * @notice Factory contract for creating and managing personal vaults
  * @dev Each user gets their own personal vault
  */
-contract PersonalVaultFactory is Ownable, ReentrancyGuard, AccessControl {
+contract PersonalVaultFactory is Ownable, AccessControlEnumerable {
     // Role definitions
     bytes32 public constant ADMIN_ROLE = keccak256("ADMIN_ROLE");
     bytes32 public constant BOT_ROLE = keccak256("BOT_ROLE");
@@ -28,53 +27,67 @@ contract PersonalVaultFactory is Ownable, ReentrancyGuard, AccessControl {
     event BotAdded(address indexed bot);
     event BotRemoved(address indexed bot);
     
+    // PersonalVault implementation contract address
+    address public personalVaultImplementation;
+    
+    event ImplementationChanged(address indexed newImplementation);
+    
     /**
      * @notice Constructor
      * @param initialAdmin The initial admin address
+     * @param _personalVaultImplementation The PersonalVault implementation contract address
      */
-    constructor(address initialAdmin) Ownable(msg.sender) {
+    constructor(address initialAdmin, address _personalVaultImplementation) {
         require(initialAdmin != address(0), "Invalid admin address");
+        require(_personalVaultImplementation != address(0), "Invalid implementation");
         
         // Set up roles
         _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
         _grantRole(ADMIN_ROLE, initialAdmin);
+        
+        personalVaultImplementation = _personalVaultImplementation;
+        emit ImplementationChanged(_personalVaultImplementation);
+    }
+    
+    /**
+     * @notice Set the PersonalVault implementation contract address
+     * @param _impl The new implementation contract address
+     */
+    function setImplementation(address _impl) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        require(_impl != address(0), "Invalid implementation");
+        personalVaultImplementation = _impl;
+        emit ImplementationChanged(_impl);
     }
     
     /**
      * @notice Create a new personal vault for a user
-     * @param baseAsset The base asset (token) for the vault
-     * @param name The name for the vault token
-     * @param symbol The symbol for the vault token
      * @param swapRouter The address of the Uniswap swap router
-     * @param priceOracle The address of the price oracle
      * @return The address of the newly created vault
      */
-    function createVault(
-        IERC20 baseAsset,
-        string memory name,
-        string memory symbol,
-        address swapRouter,
-        address priceOracle
-    ) external nonReentrant returns (address) {
+    function createVault(address swapRouter) external returns (address) {
         require(userVaults[msg.sender] == address(0), "User already has a vault");
+        require(personalVaultImplementation != address(0), "No implementation");
         
-        // Create a new personal vault
-        PersonalVault newVault = new PersonalVault(
-            baseAsset,
-            name,
-            symbol,
-            swapRouter,
-            priceOracle,
-            msg.sender, // The user is the investor
-            address(this) // The factory is the owner
+        // Encode initialize data for proxy
+        bytes memory data = abi.encodeWithSelector(
+            PersonalVault.initialize.selector,
+            msg.sender, // investor
+            msg.sender, // admin
+            swapRouter
         );
         
+        // Create a new ERC1967Proxy
+        ERC1967Proxy proxy = new ERC1967Proxy(personalVaultImplementation, data);
+        
+        // Get the address of the newly created vault
+        address vaultAddress = address(proxy);
+        
         // Store the vault address
-        address vaultAddress = address(newVault);
         userVaults[msg.sender] = vaultAddress;
         allVaults.push(vaultAddress);
         
         // Grant the factory admin role on the vault
+        PersonalVault newVault = PersonalVault(vaultAddress);
         newVault.grantRole(newVault.DEFAULT_ADMIN_ROLE(), address(this));
         
         // Grant bots access to the vault
@@ -143,10 +156,7 @@ contract PersonalVaultFactory is Ownable, ReentrancyGuard, AccessControl {
      * @param vault The vault to set up bots for
      */
     function _setupBotsForVault(PersonalVault vault) internal {
-        // Get all addresses with the BOT_ROLE
         uint256 roleCount = getRoleMemberCount(BOT_ROLE);
-        
-        // Grant each bot the ORACLE_ROLE on the new vault
         for (uint256 i = 0; i < roleCount; i++) {
             address bot = getRoleMember(BOT_ROLE, i);
             vault.grantRole(vault.ORACLE_ROLE(), bot);

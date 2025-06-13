@@ -1,4 +1,5 @@
-import { ethers } from "hardhat";
+import { ethers as hardhatEthers } from "hardhat";
+const ethers = hardhatEthers;
 
 async function main() {
   const [user] = await ethers.getSigners();
@@ -7,13 +8,9 @@ async function main() {
   const factory = Factory.attach(factoryAddress);
 
   // 配置参数
-  const baseAsset = process.env.BASE_ASSET!;
-  const name = "UserVaultToken";
-  const symbol = "UVT";
   const swapRouter = process.env.SWAP_ROUTER!;
-  const priceOracle = process.env.PRICE_ORACLE!;
 
-  const tx = await factory.createVault(baseAsset, name, symbol, swapRouter, priceOracle);
+  const tx = await factory.createVault(swapRouter);
   const receipt = await tx.wait();
   console.log("Vault created, tx hash:", receipt.transactionHash);
 }
