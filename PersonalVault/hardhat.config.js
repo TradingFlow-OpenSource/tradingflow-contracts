@@ -3,7 +3,7 @@ require("@openzeppelin/hardhat-upgrades");
 require("dotenv").config();
 
 INFURA_API_KEY = process.env.INFURA_API_KEY || "";
-DEPLOY_WALLET_1 = process.env.DEPLOY_WALLET_1 || "";
+const DEPLOYER_PRIVATE_KEY = process.env.DEPLOYER_PRIVATE_KEY || "";
 
 module.exports = {
   solidity: {
@@ -28,35 +28,35 @@ module.exports = {
     },
     // Flow EVM 网络配置
     flow: {
-      url: 'https://mainnet.evm.nodes.onflow.org',
-      accounts: [DEPLOY_WALLET_1],
+      url: "https://mainnet.evm.nodes.onflow.org",
+      accounts: [DEPLOYER_PRIVATE_KEY],
     },
     flowTestnet: {
-      url: 'https://testnet.evm.nodes.onflow.org',
-      accounts: [DEPLOY_WALLET_1],
+      url: "https://testnet.evm.nodes.onflow.org",
+      accounts: [DEPLOYER_PRIVATE_KEY],
     },
   },
   etherscan: {
     apiKey: {
       // Flow EVM 不需要实际的 API 密钥
-      'flow': "abc",
-      'flowTestnet': "abc"
+      flow: "abc",
+      flowTestnet: "abc",
     },
     customChains: [
       {
-        network: 'flow',
+        network: "flow",
         chainId: 747,
         urls: {
-          apiURL: 'https://evm.flowscan.io/api',
-          browserURL: 'https://evm.flowscan.io/',
+          apiURL: "https://evm.flowscan.io/api",
+          browserURL: "https://evm.flowscan.io/",
         },
       },
       {
-        network: 'flowTestnet',
+        network: "flowTestnet",
         chainId: 545,
         urls: {
-          apiURL: 'https://evm-testnet.flowscan.io/api',
-          browserURL: 'https://evm-testnet.flowscan.io/',
+          apiURL: "https://evm-testnet.flowscan.io/api",
+          browserURL: "https://evm-testnet.flowscan.io/",
         },
       },
     ],
