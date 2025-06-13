@@ -2,16 +2,16 @@
 pragma solidity ^0.8.20;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
-import "@openzeppelin/contracts/access/AccessControlEnumerable.sol";
+import "@openzeppelin/contracts/access/AccessControl.sol";
 import "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
-import "./PersonalVault.sol";
+import "./PersonalVaultUpgradeable.sol";
 
 /**
  * @title PersonalVaultFactory
  * @notice Factory contract for creating and managing personal vaults
  * @dev Each user gets their own personal vault
  */
-contract PersonalVaultFactory is Ownable, AccessControlEnumerable {
+contract PersonalVaultFactory is Ownable, AccessControl {
     // Role definitions
     bytes32 public constant ADMIN_ROLE = keccak256("ADMIN_ROLE");
     bytes32 public constant BOT_ROLE = keccak256("BOT_ROLE");
@@ -21,6 +21,9 @@ contract PersonalVaultFactory is Ownable, AccessControlEnumerable {
     
     // Array of all vault addresses
     address[] public allVaults;
+    
+    // Array to track all bot addresses
+    address[] private botAddresses;
     
     // Events
     event VaultCreated(address indexed user, address indexed vault);
@@ -37,7 +40,7 @@ contract PersonalVaultFactory is Ownable, AccessControlEnumerable {
      * @param initialAdmin The initial admin address
      * @param _personalVaultImplementation The PersonalVault implementation contract address
      */
-    constructor(address initialAdmin, address _personalVaultImplementation) {
+    constructor(address initialAdmin, address _personalVaultImplementation) Ownable(msg.sender) {
         require(initialAdmin != address(0), "Invalid admin address");
         require(_personalVaultImplementation != address(0), "Invalid implementation");
         
@@ -70,7 +73,7 @@ contract PersonalVaultFactory is Ownable, AccessControlEnumerable {
         
         // Encode initialize data for proxy
         bytes memory data = abi.encodeWithSelector(
-            PersonalVault.initialize.selector,
+            PersonalVaultUpgradeable.initialize.selector,
             msg.sender, // investor
             msg.sender, // admin
             swapRouter
@@ -87,7 +90,7 @@ contract PersonalVaultFactory is Ownable, AccessControlEnumerable {
         allVaults.push(vaultAddress);
         
         // Grant the factory admin role on the vault
-        PersonalVault newVault = PersonalVault(vaultAddress);
+        PersonalVaultUpgradeable newVault = PersonalVaultUpgradeable(vaultAddress);
         newVault.grantRole(newVault.DEFAULT_ADMIN_ROLE(), address(this));
         
         // Grant bots access to the vault
@@ -106,10 +109,11 @@ contract PersonalVaultFactory is Ownable, AccessControlEnumerable {
         require(botAddress != address(0), "Invalid bot address");
         
         _grantRole(BOT_ROLE, botAddress);
+        botAddresses.push(botAddress);
         
         // Grant the bot role on all existing vaults
         for (uint i = 0; i < allVaults.length; i++) {
-            PersonalVault vault = PersonalVault(allVaults[i]);
+            PersonalVaultUpgradeable vault = PersonalVaultUpgradeable(allVaults[i]);
             vault.grantRole(vault.ORACLE_ROLE(), botAddress);
         }
         
@@ -125,9 +129,19 @@ contract PersonalVaultFactory is Ownable, AccessControlEnumerable {
         
         _revokeRole(BOT_ROLE, botAddress);
         
+        // Remove from botAddresses array
+        for (uint i = 0; i < botAddresses.length; i++) {
+            if (botAddresses[i] == botAddress) {
+                // Replace with the last element and pop
+                botAddresses[i] = botAddresses[botAddresses.length - 1];
+                botAddresses.pop();
+                break;
+            }
+        }
+        
         // Revoke the bot role on all existing vaults
         for (uint i = 0; i < allVaults.length; i++) {
-            PersonalVault vault = PersonalVault(allVaults[i]);
+            PersonalVaultUpgradeable vault = PersonalVaultUpgradeable(allVaults[i]);
             vault.revokeRole(vault.ORACLE_ROLE(), botAddress);
         }
         
@@ -155,10 +169,10 @@ contract PersonalVaultFactory is Ownable, AccessControlEnumerable {
      * @notice Set up bots for a new vault
      * @param vault The vault to set up bots for
      */
-    function _setupBotsForVault(PersonalVault vault) internal {
-        uint256 roleCount = getRoleMemberCount(BOT_ROLE);
-        for (uint256 i = 0; i < roleCount; i++) {
-            address bot = getRoleMember(BOT_ROLE, i);
+    function _setupBotsForVault(PersonalVaultUpgradeable vault) internal {
+        // Use the botAddresses array instead of role enumeration
+        for (uint256 i = 0; i < botAddresses.length; i++) {
+            address bot = botAddresses[i];
             vault.grantRole(vault.ORACLE_ROLE(), bot);
         }
     }
