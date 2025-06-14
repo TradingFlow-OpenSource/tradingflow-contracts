@@ -7,6 +7,7 @@ require("ts-node/register");
 const INFURA_API_KEY = process.env.INFURA_API_KEY || "";
 const DEPLOYER_PRIVATE_KEY = process.env.DEPLOYER_PRIVATE_KEY || "";
 const USER_PRIVATE_KEY = process.env.USER_PRIVATE_KEY || "";
+const BOT_PRIVATE_KEY = process.env.BOT_PRIVATE_KEY || "";
 
 module.exports = {
   solidity: {
@@ -41,7 +42,8 @@ module.exports = {
     // Flow EVM 网络配置
     flow: {
       url: process.env.FLOW_RPC_URL || "https://mainnet.evm.nodes.onflow.org",
-      accounts: [DEPLOYER_PRIVATE_KEY, USER_PRIVATE_KEY].filter(
+      // 使用三个不同的私钥，一个用于部署，一个用于用户，一个用于机器人
+      accounts: [DEPLOYER_PRIVATE_KEY, USER_PRIVATE_KEY, BOT_PRIVATE_KEY].filter(
         (key) => key !== ""
       ),
       timeout: 300000, // 5分钟超时
