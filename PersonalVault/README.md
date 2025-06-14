@@ -1,6 +1,6 @@
 # PersonalVault 模块（UUPS 可升级 Proxy 版）
 
-本模块基于 EVM，采用 UUPS Proxy 可升级模式，每个用户独立部署自己的金库（Vault），便于后续合约逻辑升级。支持标准 EVM 链和 Flow EVM 部署。
+本模块基于 EVM，采用 UUPS Proxy 可升级模式，每个用户独立部署自己的金库（Vault），便于后续合约逻辑升级。支持标准 EVM 链和 Flow EVM 部署。支持原生代币（ETH/FLOW）和 ERC20 代币的存取和交换。
 
 ---
 
@@ -174,6 +174,7 @@ npx hardhat verify --network flow <工厂合约地址> <管理员地址> <实现
 # 先设置环境变量
 export FACTORY_ADDRESS=0x... # 从部署输出获取
 export SWAP_ROUTER=0x...    # Flow EVM 主网 DEX 路由地址
+export WRAPPED_NATIVE=0x5c147e74d63b1d31aa3fd78eb229b65161983b2b # Flow EVM 主网 WFLOW 地址
 
 # 用第二个账号（USER_PRIVATE_KEY）创建金库
 npx hardhat run scripts/createVaultUser.ts --network flow
@@ -215,18 +216,29 @@ async function main() {
   const tokenAddress = process.env.TOKEN_ADDRESS!;
   const amount = ethers.utils.parseUnits("100", 18); // 100 Token
 
-  // 1. 先授权
-  const ERC20 = await ethers.getContractAt("IERC20", tokenAddress);
-  await ERC20.connect(user).approve(vaultAddress, amount);
-
-  // 2. 存款
   const Vault = await ethers.getContractAt(
     "PersonalVaultUpgradeable",
     vaultAddress
   );
-  const tx = await Vault.connect(user).deposit(tokenAddress, amount);
-  await tx.wait();
-  console.log("Deposit success");
+
+  // 选项 1: 存入 ERC20 代币
+  if (tokenAddress) {
+    // 1. 先授权
+    const ERC20 = await ethers.getContractAt("IERC20", tokenAddress);
+    await ERC20.connect(user).approve(vaultAddress, amount);
+
+    // 2. 存款
+    const tx = await Vault.connect(user).deposit(tokenAddress, amount);
+    await tx.wait();
+    console.log(`Deposited ${ethers.formatEther(amount)} ERC20 tokens`);
+  }
+  // 选项 2: 存入原生代币
+  else {
+    const nativeAmount = ethers.parseEther("0.01"); // 0.01 ETH/FLOW
+    const tx = await Vault.connect(user).depositNative({ value: nativeAmount });
+    await tx.wait();
+    console.log(`Deposited ${ethers.formatEther(nativeAmount)} native tokens`);
+  }
 }
 main();
 ```
@@ -246,9 +258,20 @@ async function main() {
     "PersonalVaultUpgradeable",
     vaultAddress
   );
-  const tx = await Vault.connect(user).withdraw(tokenAddress, amount);
-  await tx.wait();
-  console.log("Withdraw success");
+
+  // 选项 1: 提取 ERC20 代币
+  if (tokenAddress) {
+    const tx = await Vault.connect(user).withdraw(tokenAddress, amount);
+    await tx.wait();
+    console.log(`Withdrawn ${ethers.formatEther(amount)} ERC20 tokens`);
+  }
+  // 选项 2: 提取原生代币
+  else {
+    const nativeAmount = ethers.parseEther("0.005"); // 0.005 ETH/FLOW
+    const tx = await Vault.connect(user).withdrawNative(nativeAmount);
+    await tx.wait();
+    console.log(`Withdrawn ${ethers.formatEther(nativeAmount)} native tokens`);
+  }
 }
 main();
 ```
@@ -265,21 +288,63 @@ async function main() {
     "PersonalVaultUpgradeable",
     vaultAddress
   );
-  // 示例参数
-  const tokenIn = process.env.TOKEN_IN!;
-  const tokenOut = process.env.TOKEN_OUT!;
+
+  // 获取原生代币地址常量
+  const NATIVE_TOKEN = await Vault.NATIVE_TOKEN();
+  const wrappedNative = await Vault.WRAPPED_NATIVE();
+
+  // 选择交换类型
+  const swapType = process.env.SWAP_TYPE || "erc20";
   const fee = 3000; // 0.3%
-  const amountIn = ethers.utils.parseUnits("1", 18);
   const amountOutMin = 0;
-  const tx = await Vault.connect(bot).swapExactInputSingle(
-    tokenIn,
-    tokenOut,
-    fee,
-    amountIn,
-    amountOutMin
-  );
+
+  let tokenIn, tokenOut, amountIn, tx;
+
+  switch (swapType) {
+    case "native_to_erc20":
+      // 交换原生代币为 ERC20 代币
+      tokenIn = NATIVE_TOKEN;
+      tokenOut = process.env.TOKEN_OUT!;
+      amountIn = ethers.parseEther("0.01");
+      tx = await Vault.connect(bot).swapExactInputSingle(
+        tokenIn,
+        tokenOut,
+        fee,
+        amountIn,
+        amountOutMin
+      );
+      break;
+
+    case "erc20_to_native":
+      // 交换 ERC20 代币为原生代币
+      tokenIn = process.env.TOKEN_IN!;
+      tokenOut = NATIVE_TOKEN;
+      amountIn = ethers.parseUnits("1", 18);
+      tx = await Vault.connect(bot).swapExactInputSingle(
+        tokenIn,
+        tokenOut,
+        fee,
+        amountIn,
+        amountOutMin
+      );
+      break;
+
+    default:
+      // 标准 ERC20 代币交换
+      tokenIn = process.env.TOKEN_IN!;
+      tokenOut = process.env.TOKEN_OUT!;
+      amountIn = ethers.parseUnits("1", 18);
+      tx = await Vault.connect(bot).swapExactInputSingle(
+        tokenIn,
+        tokenOut,
+        fee,
+        amountIn,
+        amountOutMin
+      );
+  }
+
   await tx.wait();
-  console.log("Swap success");
+  console.log(`Swap from ${tokenIn} to ${tokenOut} successful`);
 }
 main();
 ```
@@ -311,7 +376,53 @@ main();
 
 ---
 
-## 七、测试
+## 七、原生代币支持
+
+### 1. 原生代币功能概述
+
+PersonalVaultUpgradeable 合约现已支持原生代币（如 ETH 或 FLOW）的存取和交换功能：
+
+- 使用特殊地址 `0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE` 表示原生代币
+- 支持原生代币的存入和提取
+- 支持原生代币与 ERC20 代币之间的交换
+- 自动处理原生代币与包装原生代币（如 WETH 或 WFLOW）的转换
+
+### 2. 原生代币相关函数
+
+- `depositNative()`: 存入原生代币（需要发送相应数量的 ETH/FLOW）
+- `withdrawNative(uint256 amount)`: 提取指定数量的原生代币
+- `receive()`: 允许合约接收原生代币转账
+
+### 3. 原生代币交换
+
+原生代币交换使用 `swapExactInputSingle` 函数，与 ERC20 代币交换使用相同的接口：
+
+- 当 `tokenIn` 为原生代币地址时，使用金库中的原生代币余额进行交换
+- 当 `tokenOut` 为原生代币地址时，交换结果会自动转换为原生代币并更新金库余额
+
+### 4. 使用示例
+
+```typescript
+// 存入原生代币
+const depositAmount = ethers.parseEther("0.1");
+await vault.connect(user).depositNative({ value: depositAmount });
+
+// 提取原生代币
+const withdrawAmount = ethers.parseEther("0.05");
+await vault.connect(user).withdrawNative(withdrawAmount);
+
+// 交换原生代币为 ERC20 代币
+const NATIVE_TOKEN = await vault.NATIVE_TOKEN();
+await vault.connect(bot).swapExactInputSingle(
+  NATIVE_TOKEN,
+  TOKEN_ADDRESS,
+  3000, // 0.3% 费率
+  ethers.parseEther("0.01"),
+  1 // 最小输出金额
+);
+```
+
+## 八、测试
 
 建议使用 Hardhat+@openzeppelin/hardhat-upgrades 编写测试用例，覆盖存取款、升级、权限管理等核心场景。
 
@@ -320,17 +431,17 @@ main();
 ### 【2025-06-13 Flow 主网部署信息】
 
 - PersonalVaultUpgradeable implementation 地址：
-  `0x2494F9E24016622725D48445db55a93ed24A5293`
+  `0x2E3b9Bb10a643DaDEDe356049e0bfdF0B6aDcd8a`
 - PersonalVaultFactory 地址：
-  `0xA4C742Fb3C80E301A111aF38E6E0d9ab07a812f4`
+  `0x486eDaD5bBbDC8eD5518172b48866cE747899D89`
 
 **推荐环境变量设置：**
+
 ```shell
-export PERSONAL_VAULT_IMPL=0x2494F9E24016622725D48445db55a93ed24A5293
-export FACTORY_ADDRESS=0xA4C742Fb3C80E301A111aF38E6E0d9ab07a812f4
+PERSONAL_VAULT_IMPL=0x2E3b9Bb10a643DaDEDe356049e0bfdF0B6aDcd8a
+FACTORY_ADDRESS=0x486eDaD5bBbDC8eD5518172b48866cE747899D89
 ```
 
 可直接用于本地或主网脚本测试。
-
 
 如需定制脚本或有特殊业务需求，请联系开发者。

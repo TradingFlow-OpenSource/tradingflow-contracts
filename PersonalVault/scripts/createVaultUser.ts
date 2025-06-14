@@ -12,12 +12,13 @@ async function main() {
 
   const factoryAddress = process.env.FACTORY_ADDRESS;
   const swapRouter = process.env.SWAP_ROUTER;
-  if (!factoryAddress || !swapRouter) {
-    throw new Error("请设置 FACTORY_ADDRESS 和 SWAP_ROUTER 环境变量");
+  const wrappedNative = process.env.WRAPPED_NATIVE;
+  if (!factoryAddress || !swapRouter || !wrappedNative) {
+    throw new Error("请设置 FACTORY_ADDRESS、SWAP_ROUTER 和 WRAPPED_NATIVE 环境变量");
   }
 
   const Factory = await ethers.getContractAt("PersonalVaultFactory", factoryAddress, user);
-  const tx = await Factory.createVault(swapRouter);
+  const tx = await Factory.createVault(swapRouter, wrappedNative);
   const receipt = await tx.wait();
   console.log("金库创建交易已发送，hash:", receipt.hash);
 

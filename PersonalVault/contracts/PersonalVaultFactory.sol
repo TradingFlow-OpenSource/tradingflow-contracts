@@ -17,10 +17,10 @@ contract PersonalVaultFactory is Ownable, AccessControl {
     bytes32 public constant BOT_ROLE = keccak256("BOT_ROLE");
     
     // Mapping from user address to their vault
-    mapping(address => address) public userVaults;
+    mapping(address => address payable) public userVaults;
     
     // Array of all vault addresses
-    address[] public allVaults;
+    address payable[] public allVaults;
     
     // Array to track all bot addresses
     address[] private botAddresses;
@@ -65,25 +65,28 @@ contract PersonalVaultFactory is Ownable, AccessControl {
     /**
      * @notice Create a new personal vault for a user
      * @param swapRouter The address of the Uniswap swap router
+     * @param wrappedNative The address of the wrapped native token (WETH/WFLOW)
      * @return The address of the newly created vault
      */
-    function createVault(address swapRouter) external returns (address) {
+    function createVault(address swapRouter, address wrappedNative) external returns (address payable) {
         require(userVaults[msg.sender] == address(0), "User already has a vault");
         require(personalVaultImplementation != address(0), "No implementation");
+        require(wrappedNative != address(0), "Invalid wrapped native");
         
         // Encode initialize data for proxy
         bytes memory data = abi.encodeWithSelector(
             PersonalVaultUpgradeable.initialize.selector,
             msg.sender, // investor
             msg.sender, // admin
-            swapRouter
+            swapRouter,
+            wrappedNative
         );
         
         // Create a new ERC1967Proxy
         ERC1967Proxy proxy = new ERC1967Proxy(personalVaultImplementation, data);
         
         // Get the address of the newly created vault
-        address vaultAddress = address(proxy);
+        address payable vaultAddress = payable(address(proxy));
         
         // Store the vault address
         userVaults[msg.sender] = vaultAddress;
@@ -113,7 +116,7 @@ contract PersonalVaultFactory is Ownable, AccessControl {
         
         // Grant the bot role on all existing vaults
         for (uint i = 0; i < allVaults.length; i++) {
-            PersonalVaultUpgradeable vault = PersonalVaultUpgradeable(allVaults[i]);
+            PersonalVaultUpgradeable vault = PersonalVaultUpgradeable(payable(allVaults[i]));
             vault.grantRole(vault.ORACLE_ROLE(), botAddress);
         }
         
@@ -141,7 +144,7 @@ contract PersonalVaultFactory is Ownable, AccessControl {
         
         // Revoke the bot role on all existing vaults
         for (uint i = 0; i < allVaults.length; i++) {
-            PersonalVaultUpgradeable vault = PersonalVaultUpgradeable(allVaults[i]);
+            PersonalVaultUpgradeable vault = PersonalVaultUpgradeable(payable(allVaults[i]));
             vault.revokeRole(vault.ORACLE_ROLE(), botAddress);
         }
         
@@ -153,7 +156,7 @@ contract PersonalVaultFactory is Ownable, AccessControl {
      * @param user The user address
      * @return The vault address
      */
-    function getVault(address user) external view returns (address) {
+    function getVault(address user) external view returns (address payable) {
         return userVaults[user];
     }
     
