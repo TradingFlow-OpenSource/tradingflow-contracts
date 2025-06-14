@@ -125,12 +125,10 @@ contract PersonalVaultUpgradeableUniV2 is Initializable, OwnableUpgradeable, Ree
         // 设置交易截止时间
         uint deadline = block.timestamp + 600;
         
-        // 创建交易路径
-        address[] memory path = new address[](2);
-        
         // 处理输入代币
         if (tokenIn == NATIVE_TOKEN) {
             // 如果输入是原生代币，使用swapExactETHForTokens
+            address[] memory path = new address[](2);
             path[0] = WRAPPED_NATIVE; // 路径起点是WETH/WFLOW
             path[1] = tokenOut;
             
@@ -146,6 +144,7 @@ contract PersonalVaultUpgradeableUniV2 is Initializable, OwnableUpgradeable, Ree
             amountOut = amounts[1];
         } else if (tokenOut == NATIVE_TOKEN) {
             // 如果输出是原生代币，使用swapExactTokensForETH
+            address[] memory path = new address[](2);
             path[0] = tokenIn;
             path[1] = WRAPPED_NATIVE; // 路径终点是WETH/WFLOW
             
@@ -164,24 +163,49 @@ contract PersonalVaultUpgradeableUniV2 is Initializable, OwnableUpgradeable, Ree
             // 获取输出金额
             amountOut = amounts[1];
         } else {
-            // 如果是常规ERC20代币交换，使用swapExactTokensForTokens
-            path[0] = tokenIn;
-            path[1] = tokenOut;
-            
+            // ERC20代币之间的交换
             // 批准路由器使用代币
             IERC20(tokenIn).approve(address(swapRouter), amountIn);
             
-            // 执行交换
-            uint[] memory amounts = swapRouter.swapExactTokensForTokens(
-                amountIn,
-                amountOutMinimum,
-                path,
-                address(this),
-                deadline
-            );
+            // 首先尝试直接路径
+            address[] memory directPath = new address[](2);
+            directPath[0] = tokenIn;
+            directPath[1] = tokenOut;
             
-            // 获取输出金额
-            amountOut = amounts[1];
+            // 检查直接交易对是否存在
+            address directPair = IUniswapV2Factory(swapRouter.factory()).getPair(tokenIn, tokenOut);
+            
+            if (directPair != address(0)) {
+                // 直接路径存在，使用两跳交换
+                uint[] memory amounts = swapRouter.swapExactTokensForTokens(
+                    amountIn,
+                    amountOutMinimum,
+                    directPath,
+                    address(this),
+                    deadline
+                );
+                amountOut = amounts[1];
+            } else {
+                // 直接路径不存在，尝试通过WRAPPED_NATIVE路由
+                address[] memory routedPath = new address[](3);
+                routedPath[0] = tokenIn;
+                routedPath[1] = WRAPPED_NATIVE;
+                routedPath[2] = tokenOut;
+                
+                // 验证路由路径存在
+                address pair1 = IUniswapV2Factory(swapRouter.factory()).getPair(tokenIn, WRAPPED_NATIVE);
+                address pair2 = IUniswapV2Factory(swapRouter.factory()).getPair(WRAPPED_NATIVE, tokenOut);
+                require(pair1 != address(0) && pair2 != address(0), "No valid trading route");
+                
+                uint[] memory amounts = swapRouter.swapExactTokensForTokens(
+                    amountIn,
+                    amountOutMinimum,
+                    routedPath,
+                    address(this),
+                    deadline
+                );
+                amountOut = amounts[2]; // 三跳路径的最终输出
+            }
         }
         
         // 更新余额
