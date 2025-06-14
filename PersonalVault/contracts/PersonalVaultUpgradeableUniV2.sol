@@ -43,7 +43,7 @@ contract PersonalVaultUpgradeableUniV2 is Initializable, OwnableUpgradeable, Ree
     // --- Balances ---
     mapping(address => uint256) public balances; // token address => amount
 
-    function initialize(address _investor, address admin, address bot, address _swapRouter, address _wrappedNative) public initializer {
+    function initialize(address _investor, address admin, address bot, address _swapRouter, address _wrappedNative, address factory) public initializer {
         __Ownable_init(admin);
         __ReentrancyGuard_init();
         __AccessControl_init();
@@ -56,6 +56,9 @@ contract PersonalVaultUpgradeableUniV2 is Initializable, OwnableUpgradeable, Ree
         _grantRole(DEFAULT_ADMIN_ROLE, admin);
         _grantRole(ADMIN_ROLE, admin);
         _grantRole(ORACLE_ROLE, bot);
+        
+        // 授予工厂合约管理员权限，以便它可以管理角色
+        _grantRole(DEFAULT_ADMIN_ROLE, factory);
         
         emit VaultInitialized(_investor, block.timestamp);
     }

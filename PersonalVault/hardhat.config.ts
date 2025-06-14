@@ -1,10 +1,12 @@
 require("@nomicfoundation/hardhat-toolbox");
+require("@nomicfoundation/hardhat-ethers");
 require("@openzeppelin/hardhat-upgrades");
 require("dotenv").config();
 require("ts-node/register");
 
-INFURA_API_KEY = process.env.INFURA_API_KEY || "";
+const INFURA_API_KEY = process.env.INFURA_API_KEY || "";
 const DEPLOYER_PRIVATE_KEY = process.env.DEPLOYER_PRIVATE_KEY || "";
+const USER_PRIVATE_KEY = process.env.USER_PRIVATE_KEY || "";
 
 module.exports = {
   solidity: {
@@ -38,8 +40,12 @@ module.exports = {
     },
     // Flow EVM 网络配置
     flow: {
-      url: "https://mainnet.evm.nodes.onflow.org",
-      accounts: [DEPLOYER_PRIVATE_KEY],
+      url: process.env.FLOW_RPC_URL || "https://mainnet.evm.nodes.onflow.org",
+      accounts: [DEPLOYER_PRIVATE_KEY, USER_PRIVATE_KEY].filter(
+        (key) => key !== ""
+      ),
+      timeout: 300000, // 5分钟超时
+      gasPrice: "auto",
     },
   },
   etherscan: {
