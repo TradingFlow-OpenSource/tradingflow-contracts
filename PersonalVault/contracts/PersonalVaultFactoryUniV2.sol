@@ -4,14 +4,13 @@ pragma solidity ^0.8.20;
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/access/AccessControl.sol";
 import "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
-import "./PersonalVaultUpgradeable.sol";
+import "./PersonalVaultUpgradeableUniV2.sol";
 
 /**
- * @title PersonalVaultFactory
- * @notice Factory contract for creating and managing personal vaults
- * @dev Each user gets their own personal vault
+ * @title PersonalVaultFactoryUniV2
+ * @notice 个人金库工厂合约，用于创建和管理用户的个人金库，使用Uniswap V2/PunchSwap V2进行交换
  */
-contract PersonalVaultFactory is Ownable, AccessControl {
+contract PersonalVaultFactoryUniV2 is Ownable, AccessControl {
     // Role definitions
     bytes32 public constant ADMIN_ROLE = keccak256("ADMIN_ROLE");
     bytes32 public constant BOT_ROLE = keccak256("BOT_ROLE");
@@ -66,18 +65,21 @@ contract PersonalVaultFactory is Ownable, AccessControl {
      * @notice Create a new personal vault for a user
      * @param swapRouter The address of the Uniswap swap router
      * @param wrappedNative The address of the wrapped native token (WETH/WFLOW)
+     * @param bot The address of the bot that can execute trades
      * @return The address of the newly created vault
      */
-    function createVault(address swapRouter, address wrappedNative) external returns (address payable) {
+    function createVault(address swapRouter, address wrappedNative, address bot) external returns (address payable) {
         require(userVaults[msg.sender] == address(0), "User already has a vault");
         require(personalVaultImplementation != address(0), "No implementation");
         require(wrappedNative != address(0), "Invalid wrapped native");
+        require(bot != address(0), "Invalid bot address");
         
         // Encode initialize data for proxy
         bytes memory data = abi.encodeWithSelector(
-            PersonalVaultUpgradeable.initialize.selector,
+            PersonalVaultUpgradeableUniV2.initialize.selector,
             msg.sender, // investor
             msg.sender, // admin
+            bot,       // bot
             swapRouter,
             wrappedNative
         );
@@ -93,7 +95,7 @@ contract PersonalVaultFactory is Ownable, AccessControl {
         allVaults.push(vaultAddress);
         
         // Grant the factory admin role on the vault
-        PersonalVaultUpgradeable newVault = PersonalVaultUpgradeable(vaultAddress);
+        PersonalVaultUpgradeableUniV2 newVault = PersonalVaultUpgradeableUniV2(vaultAddress);
         newVault.grantRole(newVault.DEFAULT_ADMIN_ROLE(), address(this));
         
         // Grant bots access to the vault
@@ -116,7 +118,7 @@ contract PersonalVaultFactory is Ownable, AccessControl {
         
         // Grant the bot role on all existing vaults
         for (uint i = 0; i < allVaults.length; i++) {
-            PersonalVaultUpgradeable vault = PersonalVaultUpgradeable(payable(allVaults[i]));
+            PersonalVaultUpgradeableUniV2 vault = PersonalVaultUpgradeableUniV2(payable(allVaults[i]));
             vault.grantRole(vault.ORACLE_ROLE(), botAddress);
         }
         
@@ -144,7 +146,7 @@ contract PersonalVaultFactory is Ownable, AccessControl {
         
         // Revoke the bot role on all existing vaults
         for (uint i = 0; i < allVaults.length; i++) {
-            PersonalVaultUpgradeable vault = PersonalVaultUpgradeable(payable(allVaults[i]));
+            PersonalVaultUpgradeableUniV2 vault = PersonalVaultUpgradeableUniV2(payable(allVaults[i]));
             vault.revokeRole(vault.ORACLE_ROLE(), botAddress);
         }
         
@@ -172,7 +174,7 @@ contract PersonalVaultFactory is Ownable, AccessControl {
      * @notice Set up bots for a new vault
      * @param vault The vault to set up bots for
      */
-    function _setupBotsForVault(PersonalVaultUpgradeable vault) internal {
+    function _setupBotsForVault(PersonalVaultUpgradeableUniV2 vault) internal {
         // Use the botAddresses array instead of role enumeration
         for (uint256 i = 0; i < botAddresses.length; i++) {
             address bot = botAddresses[i];

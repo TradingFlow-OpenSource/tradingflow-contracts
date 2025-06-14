@@ -1,14 +1,17 @@
-# PersonalVault 模块（UUPS 可升级 Proxy 版）
+# PersonalVault 模块（UUPS 可升级 Proxy 版 - Uniswap V2）
 
-本模块基于 EVM，采用 UUPS Proxy 可升级模式，每个用户独立部署自己的金库（Vault），便于后续合约逻辑升级。支持标准 EVM 链和 Flow EVM 部署。支持原生代币（ETH/FLOW）和 ERC20 代币的存取和交换。
+本模块基于 EVM，采用 UUPS Proxy 可升级模式，每个用户独立部署自己的金库（Vault），便于后续合约逻辑升级。支持标准 EVM 链和 Flow EVM 部署。支持原生代币（ETH/FLOW）和 ERC20 代币的存取和交换。使用 Uniswap V2/PunchSwap V2 进行代币交换操作。
 
 ---
 
 ## 目录结构
 
 - contracts/
-  - PersonalVaultUpgradeable.sol // 可升级逻辑合约
-  - PersonalVaultFactory.sol // 工厂合约
+  - PersonalVaultUpgradeableUniV2.sol // 可升级逻辑合约（Uniswap V2/PunchSwap V2版本）
+  - PersonalVaultFactoryUniV2.sol // 工厂合约（Uniswap V2/PunchSwap V2版本）
+  - PersonalVaultUpgradeableUniV3.sol // 可升级逻辑合约（Uniswap V3版本备份）
+  - PersonalVaultUpgradeable.sol // 兼容性备份（已迁移到UniV2版本）
+  - PersonalVaultFactory.sol // 兼容性备份（已迁移到UniV2版本）
 - scripts/
   - deployFactory.ts // 部署逻辑合约和工厂合约脚本
   - createVault.ts // 用户创建个人金库脚本
@@ -18,7 +21,7 @@
   - batchUpgrade.ts // 批量升级脚本（模板）
 - test/
   - personalVault.proxy.test.ts // Proxy 测试用例
-  - personalVault.test.ts // 工厂批量创建与交互测试
+  - personalVault.test.ts // 工厂批量创建与交互测试（已更新为UniV2版本）
 - README.md
 
 ---
@@ -28,12 +31,12 @@
 ### 1. 合约关系
 
 ```
-PersonalVaultFactory ----创建----> ERC1967Proxy(PersonalVaultUpgradeable) <---- 用户交互
-                      |                                                    |
-                      |                                                    |
-                      |                                                    |
-                      v                                                    |
-                  PersonalVaultUpgradeable实现合约 <---------------------升级
+PersonalVaultFactoryUniV2 ----创建----> ERC1967Proxy(PersonalVaultUpgradeableUniV2) <---- 用户交互
+                          |                                                        |
+                          |                                                        |
+                          |                                                        |
+                          v                                                        |
+                      PersonalVaultUpgradeableUniV2实现合约 <---------------------升级
 ```
 
 ### 2. 合约角色
@@ -58,14 +61,14 @@ PersonalVaultFactory ----创建----> ERC1967Proxy(PersonalVaultUpgradeable) <---
 ```javascript
 // deployFactory.ts 脚本会自动完成以下流程
 
-// 1. 部署 PersonalVaultUpgradeable 实现合约
-const VaultImpl = await ethers.getContractFactory("PersonalVaultUpgradeable");
+// 1. 部署 PersonalVaultUpgradeableUniV2 实现合约
+const VaultImpl = await ethers.getContractFactory("PersonalVaultUpgradeableUniV2");
 const implementation = await VaultImpl.deploy();
 await implementation.deployed();
 console.log("Implementation address:", implementation.address);
 
 // 2. 部署工厂合约
-const Factory = await ethers.getContractFactory("PersonalVaultFactory");
+const Factory = await ethers.getContractFactory("PersonalVaultFactoryUniV2");
 const factory = await Factory.deploy(adminAddress, implementation.address);
 await factory.deployed();
 console.log("Factory address:", factory.address);

@@ -18,6 +18,15 @@ module.exports = {
           },
         },
       },
+      {
+        version: "0.6.6",
+        settings: {
+          optimizer: {
+            enabled: true,
+            runs: 200,
+          },
+        },
+      },
     ],
   },
   networks: {
@@ -32,16 +41,11 @@ module.exports = {
       url: "https://mainnet.evm.nodes.onflow.org",
       accounts: [DEPLOYER_PRIVATE_KEY],
     },
-    flowTestnet: {
-      url: "https://testnet.evm.nodes.onflow.org",
-      accounts: [DEPLOYER_PRIVATE_KEY],
-    },
   },
   etherscan: {
     apiKey: {
       // Flow EVM 不需要实际的 API 密钥
       flow: "abc",
-      flowTestnet: "abc",
     },
     customChains: [
       {
@@ -50,14 +54,6 @@ module.exports = {
         urls: {
           apiURL: "https://evm.flowscan.io/api",
           browserURL: "https://evm.flowscan.io/",
-        },
-      },
-      {
-        network: "flowTestnet",
-        chainId: 545,
-        urls: {
-          apiURL: "https://evm-testnet.flowscan.io/api",
-          browserURL: "https://evm-testnet.flowscan.io/",
         },
       },
     ],

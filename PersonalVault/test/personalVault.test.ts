@@ -18,8 +18,8 @@ describe("PersonalVault 主网部署集成测试 (环境变量驱动)", function
     admin = new ethers.Wallet(process.env.DEPLOYER_PRIVATE_KEY!, provider);
     user = new ethers.Wallet(process.env.USER_PRIVATE_KEY!, provider);
     bot = new ethers.Wallet(process.env.BOT_PRIVATE_KEY!, provider);
-    Vault = await ethers.getContractFactory("PersonalVaultUpgradeable");
-    Factory = await ethers.getContractFactory("PersonalVaultFactory");
+    Vault = await ethers.getContractFactory("PersonalVaultUpgradeableUniV2");
+    Factory = await ethers.getContractFactory("PersonalVaultFactoryUniV2");
     factory = Factory.attach(process.env.FACTORY_ADDRESS!);
     // 获取WRAPPED_NATIVE地址
     const WRAPPED_NATIVE = process.env.WRAPPED_NATIVE || "0x5c147e74d63b1d31aa3fd78eb229b65161983b2b"; // 默认Flow EVM主网WFLOW地址
@@ -44,8 +44,9 @@ describe("PersonalVault 主网部署集成测试 (环境变量驱动)", function
         const swapRouter = process.env.SWAP_ROUTER || admin.address;
         console.log(`使用SwapRouter: ${swapRouter}`);
         console.log(`使用WRAPPED_NATIVE: ${WRAPPED_NATIVE}`);
+        console.log(`使用Bot地址: ${bot.address}`);
 
-        const tx = await factory.connect(user).createVault(swapRouter, WRAPPED_NATIVE);
+        const tx = await factory.connect(user).createVault(swapRouter, WRAPPED_NATIVE, bot.address);
         await tx.wait();
         console.log("[before] 已为 user 创建金库");
       }
@@ -62,8 +63,9 @@ describe("PersonalVault 主网部署集成测试 (环境变量驱动)", function
       const swapRouter = process.env.SWAP_ROUTER || admin.address;
       console.log(`使用SwapRouter: ${swapRouter}`);
       console.log(`使用WRAPPED_NATIVE: ${WRAPPED_NATIVE}`);
+      console.log(`使用Bot地址: ${bot.address}`);
 
-      const tx = await factory.connect(user).createVault(swapRouter, WRAPPED_NATIVE);
+      const tx = await factory.connect(user).createVault(swapRouter, WRAPPED_NATIVE, bot.address);
       await tx.wait();
       console.log("[before] 已为 user 创建金库");
     }
@@ -199,15 +201,14 @@ describe("PersonalVault 主网部署集成测试 (环境变量驱动)", function
       // 设置swap参数
       const amountIn = ethers.parseEther("0.005"); // 使用一半的存款进行swap
       const amountOutMinimum = 1; // 最小输出金额，实际应该根据预期汇率计算
-      const fee = 3000; // 0.3%费率
+      // Uniswap V2不需要fee参数，固定为0.3%
 
       console.log(`尝试swap: ${ethers.formatEther(amountIn)} ${await tokenA.symbol()} -> ${await tokenB.symbol()}`);
 
-      // 调用swap函数
+      // 调用swap函数 - 已更新为V2接口（移除fee参数）
       const tx = await proxyVault.connect(bot).swapExactInputSingle(
         TOKEN_A_ADDRESS,
         TOKEN_B_ADDRESS,
-        fee,
         amountIn,
         amountOutMinimum
       );
@@ -282,12 +283,11 @@ describe("PersonalVault 主网部署集成测试 (环境变量驱动)", function
     console.log("\n步骤2: 将一半原生代币交换为TokenA");
     try {
       const swapAmount1 = ethers.parseEther("0.005");
-      const fee = 3000; // 0.3%费率
+      // Uniswap V2不需要fee参数，固定为0.3%
 
       const tx1 = await proxyVault.connect(bot).swapExactInputSingle(
         NATIVE_TOKEN,
         TOKEN_A_ADDRESS,
-        fee,
         swapAmount1,
         1 // 最小输出金额
       );
@@ -311,12 +311,11 @@ describe("PersonalVault 主网部署集成测试 (环境变量驱动)", function
       const tokenABalance = await proxyVault.getBalance(TOKEN_A_ADDRESS);
       if (tokenABalance.gt(0)) {
         const swapAmount2 = tokenABalance.div(2); // 使用一半TokenA
-        const fee = 3000; // 0.3%费率
+        // Uniswap V2不需要fee参数，固定为0.3%
 
         const tx2 = await proxyVault.connect(bot).swapExactInputSingle(
           TOKEN_A_ADDRESS,
           TOKEN_B_ADDRESS,
-          fee,
           swapAmount2,
           1 // 最小输出金额
         );
@@ -342,12 +341,11 @@ describe("PersonalVault 主网部署集成测试 (环境变量驱动)", function
       const tokenBBalance = await proxyVault.getBalance(TOKEN_B_ADDRESS);
       if (tokenBBalance.gt(0)) {
         const swapAmount3 = tokenBBalance; // 使用全部TokenB
-        const fee = 3000; // 0.3%费率
+        // Uniswap V2不需要fee参数，固定为0.3%
 
         const tx3 = await proxyVault.connect(bot).swapExactInputSingle(
           TOKEN_B_ADDRESS,
           WRAPPED_NATIVE,
-          fee,
           swapAmount3,
           1 // 最小输出金额
         );
