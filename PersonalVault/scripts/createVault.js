@@ -1,5 +1,6 @@
 // 使用hardhat ethers创建金库
 const { ethers } = require("hardhat");
+const { ZeroAddress } = require("ethers");
 require("dotenv").config();
 
 async function main() {
@@ -50,10 +51,10 @@ async function main() {
     // 工厂合约实例已在上面创建
 
     // 检查用户是否已有金库
-    const existingVault = await factory.userVaults(user.address);
+    const existingVault = await factory.getVault(user.address);
     console.log(`- 现有金库地址: ${existingVault}`);
 
-    if (existingVault !== ethers.ZeroAddress) {
+    if (existingVault !== ZeroAddress) {
       console.log("用户已有金库，无需创建");
       process.exit(0);
     }
@@ -79,10 +80,10 @@ async function main() {
     console.log(`交易已确认，区块号: ${receipt.blockNumber}`);
 
     // 检查新创建的金库
-    const newVault = await factory.userVaults(user.address);
+    const newVault = await factory.getVault(user.address);
     console.log(`新金库地址: ${newVault}`);
 
-    if (newVault !== ethers.ZeroAddress) {
+    if (newVault !== ZeroAddress) {
       console.log("金库创建成功！");
       console.log(`请将以下环境变量添加到.env文件中:`);
       console.log(`VAULT_ADDRESS=${newVault}`);
@@ -100,6 +101,21 @@ async function main() {
     // 检查是否有错误原因
     if (error.reason) {
       console.log(`错误原因: ${error.reason}`);
+    }
+    
+    // 检查交易失败的原因
+    if (error.transaction) {
+      console.log(`交易哈希: ${error.transaction.hash}`);
+      console.log(`交易数据: ${error.transaction.data}`);
+      
+      // 尝试解码错误
+      try {
+        const iface = new ethers.Interface(["function createVault(address _swapRouter, address _wrappedNative)"]);
+        const decodedData = iface.parseTransaction({data: error.transaction.data});
+        console.log("解码的交易数据:", decodedData);
+      } catch (decodeError) {
+        console.log("无法解码交易数据:", decodeError.message);
+      }
     }
 
     process.exit(1);

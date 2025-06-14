@@ -37,7 +37,7 @@ module.exports = {
       gas: "auto",
       gasPrice: "auto",
       blockGasLimit: 30000000,
-      timeout: 1000000,
+      timeout: 600000,
     },
     // Flow EVM 网络配置
     flow: {

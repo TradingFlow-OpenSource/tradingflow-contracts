@@ -4,7 +4,7 @@
   "description": "EVM personal vault system for single-user vaults, with factory pattern.",
   "main": "index.js",
   "scripts": {
-    "test": "npx hardhat test test/personalVaultUniV2.test.js --network flow",
+    "test": "npx hardhat test test/*.test.js --network flow",
     "deploy:factory": "hardhat run scripts/deployFactory.ts",
     "deploy:vault": "hardhat run scripts/createVault.ts"
   },
