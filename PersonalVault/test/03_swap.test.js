@@ -152,58 +152,58 @@ describe("PersonalVaultUpgradeableUniV2 - Swap与权限测试", function () {
     console.log("测试设置完成");
   });
 
-  // it("Should not allow non-bot to swap", async function () {
-  //   // 获取ORACLE_ROLE角色ID
-  //   const ORACLE_ROLE = await vault.ORACLE_ROLE();
+  it("Should not allow non-bot to swap", async function () {
+    // 获取ORACLE_ROLE角色ID
+    const ORACLE_ROLE = await vault.ORACLE_ROLE();
 
-  //   // 验证bot有ORACLE_ROLE权限
-  //   expect(await vault.hasRole(ORACLE_ROLE, await bot.getAddress())).to.be.true;
+    // 验证bot有ORACLE_ROLE权限
+    expect(await vault.hasRole(ORACLE_ROLE, await bot.getAddress())).to.be.true;
 
-  //   // 验证非bot用户无法调用swap函数
-  //   await expect(
-  //     vault
-  //       .connect(user)
-  //       .swapExactInputSingle(
-  //         NATIVE_TOKEN_ADDRESS,
-  //         wrappedNative,
-  //         ethers.parseEther("1"),
-  //         0
-  //       )
-  //   ).to.be.revertedWithCustomError(vault, "AccessControlUnauthorizedAccount");
-  // });
+    // 验证非bot用户无法调用swap函数
+    await expect(
+      vault
+        .connect(user)
+        .swapExactInputSingle(
+          NATIVE_TOKEN_ADDRESS,
+          wrappedNative,
+          ethers.parseEther("1"),
+          0
+        )
+    ).to.be.revertedWithCustomError(vault, "AccessControlUnauthorizedAccount");
+  });
 
-  // it("Should fail swap with insufficient balance", async function () {
-  //   try {
-  //     // 尝试使用超过余额的数量进行交换
-  //     try {
-  //       // 直接使用bot的私钥签名交易，避免使用connect方法
-  //       const botSigner = bot;
-  //       const tx = await vault
-  //         .connect(botSigner)
-  //         .swapExactInputSingle(
-  //           NATIVE_TOKEN_ADDRESS,
-  //           wrappedNative,
-  //           ethers.parseEther("1000"),
-  //           0
-  //         );
+  it("Should fail swap with insufficient balance", async function () {
+    try {
+      // 尝试使用超过余额的数量进行交换
+      try {
+        // 直接使用bot的私钥签名交易，避免使用connect方法
+        const botSigner = bot;
+        const tx = await vault
+          .connect(botSigner)
+          .swapExactInputSingle(
+            NATIVE_TOKEN_ADDRESS,
+            wrappedNative,
+            ethers.parseEther("1000"),
+            0
+          );
 
-  //       // 如果执行到这里，说明交易没有回滚，测试失败
-  //       expect.fail("Transaction should have been reverted");
-  //     } catch (error) {
-  //       // 检查错误信息是否包含余额不足
-  //       if (error.message.includes("Insufficient balance")) {
-  //         // 测试通过，余额不足导致交易失败
-  //       } else {
-  //         // 如果是其他错误，则重新抛出
-  //         throw error;
-  //       }
-  //     }
-  //   } catch (error) {
-  //     throw error;
-  //   }
-  // });
+        // 如果执行到这里，说明交易没有回滚，测试失败
+        expect.fail("Transaction should have been reverted");
+      } catch (error) {
+        // 检查错误信息是否包含余额不足
+        if (error.message.includes("Insufficient balance")) {
+          // 测试通过，余额不足导致交易失败
+        } else {
+          // 如果是其他错误，则重新抛出
+          throw error;
+        }
+      }
+    } catch (error) {
+      throw error;
+    }
+  });
 
-  // 真实DEX测试
+  // 真实DEX测试;
   describe("Real DEX tests on Flow network", function () {
     const PUNCHSWAP_V2_FACTORY =
       process.env.PUNCHSWAP_V2_FACTORY ||
@@ -236,165 +236,165 @@ describe("PersonalVaultUpgradeableUniV2 - Swap与权限测试", function () {
       console.log(`存入 ${ethers.formatEther(depositAmount)} FLOW 到金库`);
     });
 
-    // it("Should verify WFLOW-ankrFLOW trading pair exists", async function () {
-    //   // 检查WFLOW-ankrFLOW交易对是否存在
-    //   const pair = await factoryContract.getPair(
-    //     wrappedNative,
-    //     TOKEN_B_ADDRESS
-    //   );
-    //   console.log(`WFLOW-ankrFLOW 交易对地址: ${pair}`);
-    //   expect(pair).to.not.equal(ZeroAddress);
-    // });
+    it("Should verify WFLOW-ankrFLOW trading pair exists", async function () {
+      // 检查WFLOW-ankrFLOW交易对是否存在
+      const pair = await factoryContract.getPair(
+        wrappedNative,
+        TOKEN_B_ADDRESS
+      );
+      console.log(`WFLOW-ankrFLOW 交易对地址: ${pair}`);
+      expect(pair).to.not.equal(ZeroAddress);
+    });
 
-    // it("Should swap Native -> Token (FLOW -> ankrFLOW)", async function () {
-    //   // 检查金库中的原生代币余额
-    //   const nativeBalance = await vault.getBalance(NATIVE_TOKEN_ADDRESS);
-    //   console.log(`金库中的FLOW余额: ${ethers.formatEther(nativeBalance)}`);
-    //   expect(nativeBalance).to.be.gt(0);
+    it("Should swap Native -> Token (FLOW -> ankrFLOW)", async function () {
+      // 检查金库中的原生代币余额
+      const nativeBalance = await vault.getBalance(NATIVE_TOKEN_ADDRESS);
+      console.log(`金库中的FLOW余额: ${ethers.formatEther(nativeBalance)}`);
+      expect(nativeBalance).to.be.gt(0);
 
-    //   // 检查目标代币的初始余额
-    //   const initialTokenBBalance = await vault.getBalance(TOKEN_B_ADDRESS);
-    //   console.log(
-    //     `交换前金库中的ankrFLOW余额: ${ethers.formatEther(
-    //       initialTokenBBalance
-    //     )}`
-    //   );
+      // 检查目标代币的初始余额
+      const initialTokenBBalance = await vault.getBalance(TOKEN_B_ADDRESS);
+      console.log(
+        `交换前金库中的ankrFLOW余额: ${ethers.formatEther(
+          initialTokenBBalance
+        )}`
+      );
 
-    //   // 输出参数信息，帮助诊断resolveName问题
-    //   console.log("=== 参数详情 ===");
-    //   console.log(
-    //     "NATIVE_TOKEN_ADDRESS:",
-    //     NATIVE_TOKEN_ADDRESS,
-    //     "类型:",
-    //     typeof NATIVE_TOKEN_ADDRESS
-    //   );
-    //   console.log(
-    //     "TOKEN_B_ADDRESS:",
-    //     TOKEN_B_ADDRESS,
-    //     "类型:",
-    //     typeof TOKEN_B_ADDRESS
-    //   );
-    //   console.log(
-    //     "bot地址:",
-    //     await bot.getAddress(),
-    //     "类型:",
-    //     typeof (await bot.getAddress())
-    //   );
-    //   console.log(
-    //     "vault地址:",
-    //     await vault.getAddress(),
-    //     "类型:",
-    //     typeof (await vault.getAddress())
-    //   );
-    //   console.log(
-    //     "bot对象类型:",
-    //     typeof bot,
-    //     "是否是Signer:",
-    //     bot.constructor.name
-    //   );
-    //   console.log("=== 参数详情结束 ===");
+      // 输出参数信息，帮助诊断resolveName问题
+      console.log("=== 参数详情 ===");
+      console.log(
+        "NATIVE_TOKEN_ADDRESS:",
+        NATIVE_TOKEN_ADDRESS,
+        "类型:",
+        typeof NATIVE_TOKEN_ADDRESS
+      );
+      console.log(
+        "TOKEN_B_ADDRESS:",
+        TOKEN_B_ADDRESS,
+        "类型:",
+        typeof TOKEN_B_ADDRESS
+      );
+      console.log(
+        "bot地址:",
+        await bot.getAddress(),
+        "类型:",
+        typeof (await bot.getAddress())
+      );
+      console.log(
+        "vault地址:",
+        await vault.getAddress(),
+        "类型:",
+        typeof (await vault.getAddress())
+      );
+      console.log(
+        "bot对象类型:",
+        typeof bot,
+        "是否是Signer:",
+        bot.constructor.name
+      );
+      console.log("=== 参数详情结束 ===");
 
-    //   // 执行交换 - 使用更小的金额
-    //   const swapAmount = ethers.parseEther("0.01");
-    //   try {
-    //     console.log(
-    //       `尝试交换 ${ethers.formatEther(swapAmount)} FLOW -> ankrFLOW`
-    //     );
-    //     // 使用直接的bot对象，不通过connect方法
-    //     const botSigner = bot;
-    //     console.log("使用直接的bot签名者对象");
-    //     const tx = await vault
-    //       .connect(botSigner)
-    //       .swapExactInputSingle(
-    //         NATIVE_TOKEN_ADDRESS,
-    //         TOKEN_B_ADDRESS,
-    //         swapAmount,
-    //         0
-    //       );
-    //     await tx.wait();
+      // 执行交换 - 使用更小的金额
+      const swapAmount = ethers.parseEther("0.01");
+      try {
+        console.log(
+          `尝试交换 ${ethers.formatEther(swapAmount)} FLOW -> ankrFLOW`
+        );
+        // 使用直接的bot对象，不通过connect方法
+        const botSigner = bot;
+        console.log("使用直接的bot签名者对象");
+        const tx = await vault
+          .connect(botSigner)
+          .swapExactInputSingle(
+            NATIVE_TOKEN_ADDRESS,
+            TOKEN_B_ADDRESS,
+            swapAmount,
+            0
+          );
+        await tx.wait();
 
-    //     // 检查交换后的余额
-    //     const finalNativeBalance = await vault.getBalance(NATIVE_TOKEN_ADDRESS);
-    //     const finalTokenBBalance = await vault.getBalance(TOKEN_B_ADDRESS);
+        // 检查交换后的余额
+        const finalNativeBalance = await vault.getBalance(NATIVE_TOKEN_ADDRESS);
+        const finalTokenBBalance = await vault.getBalance(TOKEN_B_ADDRESS);
 
-    //     console.log(
-    //       `交换后金库中的FLOW余额: ${ethers.formatEther(finalNativeBalance)}`
-    //     );
-    //     console.log(
-    //       `交换后金库中的ankrFLOW余额: ${ethers.formatEther(
-    //         finalTokenBBalance
-    //       )}`
-    //     );
+        console.log(
+          `交换后金库中的FLOW余额: ${ethers.formatEther(finalNativeBalance)}`
+        );
+        console.log(
+          `交换后金库中的ankrFLOW余额: ${ethers.formatEther(
+            finalTokenBBalance
+          )}`
+        );
 
-    //     // 验证交换结果
-    //     expect(finalNativeBalance).to.be.lt(nativeBalance);
-    //     expect(finalTokenBBalance).to.be.gt(initialTokenBBalance);
-    //   } catch (error) {
-    //     console.log(`FLOW -> ankrFLOW 交换失败: ${error.message}`);
-    //     throw error;
-    //   }
-    // });
+        // 验证交换结果
+        expect(finalNativeBalance).to.be.lt(nativeBalance);
+        expect(finalTokenBBalance).to.be.gt(initialTokenBBalance);
+      } catch (error) {
+        console.log(`FLOW -> ankrFLOW 交换失败: ${error.message}`);
+        throw error;
+      }
+    });
 
-    // it("Should swap Token -> Native (ankrFLOW -> FLOW)", async function () {
-    //   // 检查金库中的ankrFLOW余额
-    //   const tokenBalance = await vault.getBalance(TOKEN_B_ADDRESS);
-    //   console.log(`金库中的ankrFLOW余额: ${ethers.formatEther(tokenBalance)}`);
-    //   expect(tokenBalance).to.be.gt(0);
+    it("Should swap Token -> Native (ankrFLOW -> FLOW)", async function () {
+      // 检查金库中的ankrFLOW余额
+      const tokenBalance = await vault.getBalance(TOKEN_B_ADDRESS);
+      console.log(`金库中的ankrFLOW余额: ${ethers.formatEther(tokenBalance)}`);
+      expect(tokenBalance).to.be.gt(0);
 
-    //   // 检查原生代币的初始余额
-    //   const initialNativeBalance = await vault.getBalance(NATIVE_TOKEN_ADDRESS);
-    //   console.log(
-    //     `交换前金库中的FLOW余额: ${ethers.formatEther(initialNativeBalance)}`
-    //   );
+      // 检查原生代币的初始余额
+      const initialNativeBalance = await vault.getBalance(NATIVE_TOKEN_ADDRESS);
+      console.log(
+        `交换前金库中的FLOW余额: ${ethers.formatEther(initialNativeBalance)}`
+      );
 
-    //   // 如果没有ankrFLOW余额，跳过测试
-    //   if (tokenBalance == 0) {
-    //     console.log("金库中没有ankrFLOW余额，跳过此测试");
-    //     this.skip();
-    //     return;
-    //   }
+      // 如果没有ankrFLOW余额，跳过测试
+      if (tokenBalance == 0) {
+        console.log("金库中没有ankrFLOW余额，跳过此测试");
+        this.skip();
+        return;
+      }
 
-    //   // 执行交换，使用小部分ankrFLOW余额
-    //   const swapAmount = tokenBalance / 10n; // 只使用10%的余额
-    //   try {
-    //     console.log(
-    //       `尝试交换 ${ethers.formatEther(swapAmount)} ankrFLOW -> FLOW`
-    //     );
-    //     const tx = await vault
-    //       .connect(bot)
-    //       .swapExactInputSingle(
-    //         TOKEN_B_ADDRESS,
-    //         NATIVE_TOKEN_ADDRESS,
-    //         swapAmount,
-    //         0
-    //       );
-    //     await tx.wait();
+      // 执行交换，使用小部分ankrFLOW余额
+      const swapAmount = tokenBalance / 10n; // 只使用10%的余额
+      try {
+        console.log(
+          `尝试交换 ${ethers.formatEther(swapAmount)} ankrFLOW -> FLOW`
+        );
+        const tx = await vault
+          .connect(bot)
+          .swapExactInputSingle(
+            TOKEN_B_ADDRESS,
+            NATIVE_TOKEN_ADDRESS,
+            swapAmount,
+            0
+          );
+        await tx.wait();
 
-    //     // 检查交换后的余额
-    //     const finalTokenBalance = await vault.getBalance(TOKEN_B_ADDRESS);
-    //     const finalNativeBalance = await vault.getBalance(NATIVE_TOKEN_ADDRESS);
+        // 检查交换后的余额
+        const finalTokenBalance = await vault.getBalance(TOKEN_B_ADDRESS);
+        const finalNativeBalance = await vault.getBalance(NATIVE_TOKEN_ADDRESS);
 
-    //     console.log(
-    //       `交换后金库中的ankrFLOW余额: ${ethers.formatEther(finalTokenBalance)}`
-    //     );
-    //     console.log(
-    //       `交换后金库中的FLOW余额: ${ethers.formatEther(finalNativeBalance)}`
-    //     );
+        console.log(
+          `交换后金库中的ankrFLOW余额: ${ethers.formatEther(finalTokenBalance)}`
+        );
+        console.log(
+          `交换后金库中的FLOW余额: ${ethers.formatEther(finalNativeBalance)}`
+        );
 
-    //     // 验证交换结果
-    //     expect(finalTokenBalance).to.be.lt(tokenBalance);
-    //     expect(finalNativeBalance).to.be.gt(initialNativeBalance);
-    //   } catch (error) {
-    //     console.log(`ankrFLOW -> FLOW 交换失败: ${error.message}`);
-    //     // 如果是resolveName错误，跳过测试
-    //     if (error.message.includes("resolveName")) {
-    //       console.log("跳过此测试，因为resolveName方法未实现");
-    //       this.skip();
-    //     } else {
-    //       throw error;
-    //     }
-    //   }
-    // });
+        // 验证交换结果
+        expect(finalTokenBalance).to.be.lt(tokenBalance);
+        expect(finalNativeBalance).to.be.gt(initialNativeBalance);
+      } catch (error) {
+        console.log(`ankrFLOW -> FLOW 交换失败: ${error.message}`);
+        // 如果是resolveName错误，跳过测试
+        if (error.message.includes("resolveName")) {
+          console.log("跳过此测试，因为resolveName方法未实现");
+          this.skip();
+        } else {
+          throw error;
+        }
+      }
+    });
 
     it("Should swap Token -> Token (ankrFLOW -> TRUMP_COIN)", async function () {
       // 首先检查ankrFLOW-TRUMP_COIN直接交易对是否存在
@@ -436,10 +436,10 @@ describe("PersonalVaultUpgradeableUniV2 - Swap与权限测试", function () {
 
       if (ankrFlowBalance === 0n) {
         console.log("金库中没有ankrFLOW余额，先用FLOW购买一些ankrFLOW");
-        
+
         // 用一部分FLOW购买ankrFLOW
         const flowToSwap = ethers.parseEther("0.005"); // 用0.005 FLOW购买ankrFLOW
-        
+
         try {
           const swapTx = await vault.connect(bot).swapExactInputSingle(
             NATIVE_TOKEN_ADDRESS,
@@ -449,11 +449,13 @@ describe("PersonalVaultUpgradeableUniV2 - Swap与权限测试", function () {
           );
           await swapTx.wait();
           console.log("成功用FLOW购买ankrFLOW");
-          
+
           // 重新检查ankrFLOW余额
           ankrFlowBalance = await vault.getBalance(TOKEN_B_ADDRESS);
-          console.log(`购买后的ankrFLOW余额: ${ethers.formatEther(ankrFlowBalance)}`);
-          
+          console.log(
+            `购买后的ankrFLOW余额: ${ethers.formatEther(ankrFlowBalance)}`
+          );
+
           if (ankrFlowBalance === 0n) {
             console.log("购买ankrFLOW失败，跳过此测试");
             this.skip();
