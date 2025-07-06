@@ -1,3 +1,0 @@
-[submodule "compiled_contracts"]
-	path = compiled_contracts
-	url = https://github.com/Morboz/tradingflow-contracts.git
