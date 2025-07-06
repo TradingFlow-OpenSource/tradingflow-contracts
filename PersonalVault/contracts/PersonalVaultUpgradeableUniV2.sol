@@ -38,7 +38,17 @@ contract PersonalVaultUpgradeableUniV2 is Initializable, OwnableUpgradeable, Ree
     event VaultInitialized(address indexed owner, uint256 timestamp);
     event UserDeposit(address indexed user, address indexed token, uint256 amount, uint256 timestamp);
     event UserWithdraw(address indexed user, address indexed token, uint256 amount, uint256 timestamp);
-    event TradeSignal(address indexed user, address indexed fromToken, address indexed toToken, uint256 amountIn, uint256 amountOutMin, uint256 amountOut, uint256 timestamp);
+    event TradeSignal(
+        address indexed user, 
+        address indexed fromToken, 
+        address indexed toToken, 
+        uint256 amountIn, 
+        uint256 amountOutMin, 
+        uint256 amountOut, 
+        address feeRecipient, 
+        uint256 feeAmount, 
+        uint256 timestamp
+    );
 
     // --- Balances ---
     mapping(address => uint256) public balances; // token address => amount
@@ -117,9 +127,12 @@ contract PersonalVaultUpgradeableUniV2 is Initializable, OwnableUpgradeable, Ree
         address tokenIn,
         address tokenOut,
         uint256 amountIn,
-        uint256 amountOutMinimum
+        uint256 amountOutMinimum,
+        address feeRecipient,
+        uint256 feeRate  // 费率，按百万分之一为基本单位 (1 = 0.0001%)
     ) external onlyRole(ORACLE_ROLE) nonReentrant returns (uint256 amountOut) {
         require(balances[tokenIn] >= amountIn, "Insufficient balance");
+        require(feeRate <= 1000000, "Fee rate too high"); // 最大费率100%
         balances[tokenIn] -= amountIn;
         
         // 设置交易截止时间
@@ -208,16 +221,40 @@ contract PersonalVaultUpgradeableUniV2 is Initializable, OwnableUpgradeable, Ree
             }
         }
         
-        // 更新余额
-        if (tokenOut == NATIVE_TOKEN) {
-            // 对于原生代币，已经通过swapExactTokensForETH自动转入合约
-            balances[NATIVE_TOKEN] += amountOut;
+        // 计算费用金额（按百万分之一为基本单位）
+        uint256 feeAmount = (amountOut * feeRate) / 1000000;
+        uint256 userAmount = amountOut - feeAmount;
+        
+        // 转账费用给收费人（如果费用大于0且收费人不是零地址）
+        if (feeAmount > 0 && feeRecipient != address(0)) {
+            if (tokenOut == NATIVE_TOKEN) {
+                // 原生代币费用转账
+                (bool success, ) = feeRecipient.call{value: feeAmount}("");
+                require(success, "Fee transfer failed");
+            } else {
+                // ERC20代币费用转账
+                IERC20(tokenOut).transfer(feeRecipient, feeAmount);
+            }
         } else {
-            // 常规ERC20代币，已经转入合约
-            balances[tokenOut] += amountOut;
+            // 如果没有费用或收费人为零地址，用户获得全部输出
+            userAmount = amountOut;
+            feeAmount = 0;
         }
         
-        emit TradeSignal(investor, tokenIn, tokenOut, amountIn, amountOutMinimum, amountOut, block.timestamp);
+        // 更新用户余额（扣除费用后的金额）
+        balances[tokenOut] += userAmount;
+        
+        emit TradeSignal(
+            investor, 
+            tokenIn, 
+            tokenOut, 
+            amountIn, 
+            amountOutMinimum, 
+            amountOut, 
+            feeRecipient, 
+            feeAmount, 
+            block.timestamp
+        );
     }
 
     // --- Get Balance ---
