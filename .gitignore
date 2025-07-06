@@ -1,0 +1,11 @@
+.DS_Store
+.idea/
+.vscode/
+.env
+.env.development
+.env.staging
+.env.production
+
+node_modules/
+dist/
+build/

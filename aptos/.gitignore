@@ -1,0 +1,12 @@
+.aptos/
+build/
+node_modules/
+.env
+# OPERATION_GUIDE.md
+
+examples
+.idea
+.vscode
+dist/
+
+ts-scripts/node_modules/
