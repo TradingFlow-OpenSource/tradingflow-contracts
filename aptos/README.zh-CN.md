@@ -202,7 +202,7 @@ aptos move publish --named-addresses tradingflow_vault=<您的地址> --profile 
     USER_PRIVATE_KEY=ed25519-priv-0x...
 
     # Contract Addresses
-    TRADINGFLOW_VAULT_ADDRESS=bcc4d1cd81c93c854321ad1e94ff99f34a64c4eb9a4f2c0bf85268908067fcbf
+    APTOS_FACTORY_ADDRESS=bcc4d1cd81c93c854321ad1e94ff99f34a64c4eb9a4f2c0bf85268908067fcbf
     HYPERION_ADDRESS=0x8b4a2c4bb53857c718a04c020b98f8c2e1f99a68b0f57389a8bf5434cd22e05c
     ```
 

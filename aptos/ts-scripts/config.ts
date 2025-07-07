@@ -4,7 +4,7 @@ import * as dotenv from "dotenv";
 dotenv.config({ path: "../.env" });
 
 // 合约地址
-export const CONTRACT_ADDRESS = process.env.TRADINGFLOW_VAULT_ADDRESS || "";
+export const CONTRACT_ADDRESS = process.env.APTOS_FACTORY_ADDRESS || "";
 
 // 网络配置
 export const NETWORK = Network.MAINNET;
@@ -15,5 +15,7 @@ export const USER_PRIVATE_KEY = process.env.USER_PRIVATE_KEY || "";
 
 // 验证配置
 if (!ADMIN_PRIVATE_KEY || !USER_PRIVATE_KEY) {
-  console.warn("警告: 未设置所有必要的私钥环境变量。请在.env文件中设置ADMIN_PRIVATE_KEY和USER_PRIVATE_KEY。");
+    console.warn(
+        "警告: 未设置所有必要的私钥环境变量。请在.env文件中设置ADMIN_PRIVATE_KEY和USER_PRIVATE_KEY。"
+    );
 }
