@@ -1,7 +1,7 @@
 // 使用hardhat ethers创建金库
 const { ethers } = require("hardhat");
 const { ZeroAddress } = require("ethers");
-require("dotenv").config();
+require("dotenv").config({ path: "../.env" });
 
 async function main() {
   console.log("开始创建金库...");
@@ -30,12 +30,12 @@ async function main() {
     // 获取签名者
     const signers = await ethers.getSigners();
     const deployer = signers[0];
-    
+
     // 使用第二个签名者作为用户，如果不存在则使用第一个
     const user = signers.length > 1 ? signers[1] : deployer;
     console.log(`- 部署者地址: ${deployer.address}`);
     console.log(`- 用户地址: ${user.address}`);
-    
+
     // 检查用户余额
     const balance = await ethers.provider.getBalance(user.address);
     console.log(`- 用户余额: ${ethers.formatEther(balance)} ETH`);
@@ -102,16 +102,20 @@ async function main() {
     if (error.reason) {
       console.log(`错误原因: ${error.reason}`);
     }
-    
+
     // 检查交易失败的原因
     if (error.transaction) {
       console.log(`交易哈希: ${error.transaction.hash}`);
       console.log(`交易数据: ${error.transaction.data}`);
-      
+
       // 尝试解码错误
       try {
-        const iface = new ethers.Interface(["function createVault(address _swapRouter, address _wrappedNative)"]);
-        const decodedData = iface.parseTransaction({data: error.transaction.data});
+        const iface = new ethers.Interface([
+          "function createVault(address _swapRouter, address _wrappedNative)",
+        ]);
+        const decodedData = iface.parseTransaction({
+          data: error.transaction.data,
+        });
         console.log("解码的交易数据:", decodedData);
       } catch (decodeError) {
         console.log("无法解码交易数据:", decodeError.message);

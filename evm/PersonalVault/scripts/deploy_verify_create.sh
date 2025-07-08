@@ -20,7 +20,7 @@ read -p ""
 # 从.env文件读取合约地址
 source .env
 FACTORY_ADDRESS=${FACTORY_ADDRESS}
-VAULT_IMPL_ADDRESS=${VAULT_IMPL_ADDRESS}
+PERSONAL_VAULT_IMPL=${PERSONAL_VAULT_IMPL}
 
 # 获取部署者地址（第一个账户）
 DEPLOYER_ADDRESS=$(node -e "
@@ -35,10 +35,10 @@ getDeployer();
 # 2. 验证合约
 echo -e "${GREEN}步骤 2: 验证合约${NC}"
 echo "正在验证 PersonalVaultFactoryUniV2 合约..."
-echo "使用的参数: $DEPLOYER_ADDRESS $VAULT_IMPL_ADDRESS $DEPLOYER_ADDRESS"
+echo "使用的参数: $DEPLOYER_ADDRESS $PERSONAL_VAULT_IMPL $DEPLOYER_ADDRESS"
 
 # 验证工厂合约
-npx hardhat verify --network flow $FACTORY_ADDRESS $DEPLOYER_ADDRESS $VAULT_IMPL_ADDRESS $DEPLOYER_ADDRESS
+npx hardhat verify --network flow $FACTORY_ADDRESS $DEPLOYER_ADDRESS $PERSONAL_VAULT_IMPL $DEPLOYER_ADDRESS
 
 # 等待验证完成
 echo -e "${YELLOW}验证完成。请按回车继续创建金库...${NC}"

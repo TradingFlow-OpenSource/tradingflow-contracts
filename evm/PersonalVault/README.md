@@ -6,23 +6,25 @@
 
 ## 目录结构
 
--   contracts/
-    -   PersonalVaultUpgradeableUniV2.sol // 可升级逻辑合约（Uniswap V2/PunchSwap V2 版本）
-    -   PersonalVaultFactoryUniV2.sol // 工厂合约（Uniswap V2/PunchSwap V2 版本）
-    -   PersonalVaultUpgradeableUniV3.sol // 可升级逻辑合约（Uniswap V3 版本备份）
-    -   PersonalVaultUpgradeable.sol // 兼容性备份（已迁移到 UniV2 版本）
-    -   PersonalVaultFactory.sol // 兼容性备份（已迁移到 UniV2 版本）
--   scripts/
-    -   deployFactory.ts // 部署逻辑合约和工厂合约脚本
-    -   createVault.ts // 用户创建个人金库脚本
-    -   deposit.ts // 用户存款脚本（模板）
-    -   withdraw.ts // 用户取款脚本（模板）
-    -   botSwap.ts // BOT 发起交易脚本（模板）
-    -   batchUpgrade.ts // 批量升级脚本（模板）
--   test/
-    -   personalVault.proxy.test.ts // Proxy 测试用例
-    -   personalVault.test.ts // 工厂批量创建与交互测试（已更新为 UniV2 版本）
--   README.md
+- contracts/
+  - PersonalVaultUpgradeableUniV2.sol // 可升级逻辑合约（Uniswap V2/PunchSwap V2 版本）
+  - PersonalVaultFactoryUniV2.sol // 工厂合约（Uniswap V2/PunchSwap V2 版本）
+  - PersonalVaultUpgradeableUniV3.sol // 可升级逻辑合约（Uniswap V3 版本备份）
+  - TestToken.sol // 测试代币合约
+  - interfaces/ // Uniswap V2 接口文件
+  - libraries/ // Uniswap V2 库文件
+- scripts/
+  - deploy.js // 部署逻辑合约和工厂合约脚本
+  - createVault.js // 用户创建个人金库脚本
+  - deploy_verify_create.sh // 一键部署验证脚本
+  - verifyVault.sh // 验证金库实例脚本
+  - backup/ // 备份脚本
+- test/
+  - 01_basic_functionality.test.js // 基本功能测试（存取款、权限管理）
+  - 02_native_token.test.js // 原生代币功能测试
+  - 03_swap.test.js // 交换功能和权限测试（真实 DEX 环境）
+- abi/ // 合约 ABI 文件
+- README.md
 
 ---
 
@@ -41,423 +43,203 @@ PersonalVaultFactoryUniV2 ----创建----> ERC1967Proxy(PersonalVaultUpgradeableU
 
 ### 2. 合约角色
 
--   **工厂合约角色**
+- **工厂合约角色**
 
-    -   `DEFAULT_ADMIN_ROLE`: 可以添加/移除 BOT，设置新的实现合约
-    -   `ADMIN_ROLE`: 可以添加/移除 BOT
-    -   `BOT_ROLE`: 自动获得所有金库的 ORACLE_ROLE
+  - `DEFAULT_ADMIN_ROLE`: 可以添加/移除 BOT，设置新的实现合约
+  - `ADMIN_ROLE`: 可以添加/移除 BOT
+  - `BOT_ROLE`: 自动获得所有金库的 ORACLE_ROLE
 
--   **金库合约角色**
-    -   `DEFAULT_ADMIN_ROLE`: 用户和工厂合约，可以管理所有权限
-    -   `ADMIN_ROLE`: 可以执行管理操作
-    -   `ORACLE_ROLE`: 可以执行交易操作（由工厂合约授予给 BOT）
+- **金库合约角色**
+  - `DEFAULT_ADMIN_ROLE`: 用户和工厂合约，可以管理所有权限
+  - `ADMIN_ROLE`: 可以执行管理操作
+  - `ORACLE_ROLE`: 可以执行交易操作（由工厂合约授予给 BOT）
 
 ---
 
 ## 三、部署流程
 
-### 1. 一键部署实现合约和工厂合约
+### 1. 环境变量设置
 
-```javascript
-// deployFactory.ts 脚本会自动完成以下流程
+创建 `.env` 文件：
 
-// 1. 部署 PersonalVaultUpgradeableUniV2 实现合约
-const VaultImpl = await ethers.getContractFactory(
-    "PersonalVaultUpgradeableUniV2"
-);
-const implementation = await VaultImpl.deploy();
-await implementation.deployed();
-console.log("Implementation address:", implementation.address);
+```env
+# 私钥配置
+DEPLOYER_PRIVATE_KEY=0x...      # 部署者私钥
+USER_PRIVATE_KEY=0x...         # 用户私钥
 
-// 2. 部署工厂合约
-const Factory = await ethers.getContractFactory("PersonalVaultFactoryUniV2");
-const factory = await Factory.deploy(adminAddress, implementation.address);
-await factory.deployed();
-console.log("Factory address:", factory.address);
+# 网络配置
+NETWORK=flow
+FLOW_RPC_URL=https://mainnet.evm.nodes.onflow.org
+
+# 合约地址（部署后自动生成）
+VAULT_ADDRESS=0x...            # 用户金库地址
+
+# PunchSwap V2 配置
+SWAP_ROUTER=0xf45AFe28fd5519d5f8C1d4787a4D5f724C0eFa4d
+WRAPPED_NATIVE=0xd3bF53DAC106A0290B0483EcBC89d40FcC961f3e
 ```
 
-### 2. 部署脚本
+> ⚠️ 警告：请使用单独的开发钱包，切勿将私钥提交到代码库。
 
-```shell
-npx hardhat run scripts/deployFactory.ts --network localhost
+### 2. 一键部署到 Flow EVM 主网
+
+```bash
+# 一键部署实现合约、工厂合约和创建金库
+./scripts/deploy_verify_create.sh
 ```
 
--   此脚本会自动部署 PersonalVaultUpgradeable 逻辑合约和 PersonalVaultFactory 工厂合约
--   输出将包含实现合约与工厂合约地址，并提供环境变量设置指南
--   请记录输出的合约地址，用于后续脚本
+### 3. 验证金库实例
 
----
-
-## 四、环境准备与本地模拟流程
-
-### 1. 启动 Hardhat 本地链
-
-```shell
-npx hardhat node
-```
-
-### 2. 部署实现合约与工厂合约
-
-```shell
-npx hardhat run scripts/deployFactory.ts --network localhost
-```
-
--   此脚本会自动部署 PersonalVaultUpgradeable 逻辑合约和 PersonalVaultFactory 工厂合约
--   输出将包含实现合约与工厂合约地址，并提供环境变量设置指南
--   请记录输出的合约地址，用于后续脚本
-
-### 3. 用户模拟创建个人金库
-
-```shell
-# 先设置环境变量
-export FACTORY_ADDRESS=0x... # 从上一步输出中获取
-export SWAP_ROUTER=0x... # UniswapV3或PunchSwapV3路由地址
-
-npx hardhat run scripts/createVault.ts --network localhost
-```
-
--   可切换不同私钥模拟多用户
-
-### 4. 模拟存款
-
-```shell
-npx hardhat run scripts/deposit.ts --network localhost
-```
-
--   需先用 ERC20 的 `approve` 授权金库合约。
-
-### 5. 模拟取款
-
-```shell
-npx hardhat run scripts/withdraw.ts --network localhost
-```
-
-### 6. 模拟 BOT 发起交易
-
-```shell
-npx hardhat run scripts/botSwap.ts --network localhost
+```bash
+# 验证.env中VAULT_ADDRESS的合约实例
+./scripts/verifyVault.sh
 ```
 
 ---
 
-## 五、Flow EVM 主网部署流程
+## 四、测试流程
 
-### 1. 环境准备
+> ⚠️ **重要说明**：swap 交换功能只能在 Flow EVM 主网上测试，因为需要连接真实的 PunchSwap V2 DEX。
 
-#### 1.1 安装依赖
+### 1. 验证金库实例（可选）
 
-```shell
-npm install --save-dev @openzeppelin/hardhat-upgrades
+```bash
+# 验证.env中VAULT_ADDRESS的合约实例
+./scripts/verifyVault.sh
 ```
 
-#### 1.2 设置环境变量
+### 2. 运行基本功能测试
 
-创建或编辑 `.env` 文件，添加以下内容：
+```bash
+# 运行所有测试
+npx hardhat test --network flow
 
-```
-DEPLOYER_PRIVATE_KEY=0x...      # 用于部署合约
-USER_PRIVATE_KEY=0x...         # 用于创建金库（不同于部署者）
-```
-
-> ⚠️ 警告：私钥与助记词具有相同功能，任何拥有私钥的人都可以随时操作钱包！请使用单独的开发钱包，切勿将私钥提交到代码库。
-
-### 2. 部署到 Flow EVM 主网
-
-```shell
-npx hardhat run scripts/deployFactory.ts --network flow
+# 运行特定测试
+npx hardhat test test/01_basic_functionality.test.js --network flow # 基本功能测试
+npx hardhat test test/02_native_token.test.js --network flow       # 原生代币测试
+npx hardhat test test/03_swap.test.js --network flow               # 交换功能测试（仅主网）
 ```
 
-### 3. 验证合约
+### 3. 测试覆盖范围
 
-```shell
-npx hardhat verify --network flow <工厂合约地址> <管理员地址> <实现合约地址>
-```
+- **基本功能测试** (`01_basic_functionality.test.js`)：
+  - ERC20 代币存取款
+  - 权限管理
+  - 合约升级
+- **原生代币测试** (`02_native_token.test.js`)：
+  - 原生代币（FLOW）存取款
+  - 权限验证
+- **交换功能测试** (`03_swap.test.js`)：⚠️ **仅主网可用**
+  - Swap 权限验证
+  - 真实 PunchSwap V2 环境下的代币交换
+  - FLOW ↔ ERC20 代币交换
+  - ERC20 ↔ ERC20 代币交换
 
-### 4. 在 Flow EVM 主网上创建金库
-
-```shell
-# 先设置环境变量
-export FACTORY_ADDRESS=0x... # 从部署输出获取
-export SWAP_ROUTER=0x...    # Flow EVM 主网 DEX 路由地址
-export WRAPPED_NATIVE=0x5c147e74d63b1d31aa3fd78eb229b65161983b2b # Flow EVM 主网 WFLOW 地址
-
-# 用第二个账号（USER_PRIVATE_KEY）创建金库
-npx hardhat run scripts/createVaultUser.ts --network flow
-```
-
--   可多次更换 `USER_PRIVATE_KEY`，模拟多用户创建金库。
-
-### 5. 使用 Flow 钱包与合约交互
+### 4. 使用 Flow 钱包交互
 
 1. 设置 [Flow 钱包](https://wallet.flow.com/)
 2. 连接到主网
 3. 与合约交互（存款、取款等）
 4. Flow 钱包会自动赞助 gas 费用
 
-### 6. 在 Flowscan 上查看合约
+### 5. 在 Flowscan 上查看合约
 
--   主网: [https://evm.flowscan.io/](https://evm.flowscan.io/)
+- 主网: [https://evm.flowscan.io/](https://evm.flowscan.io/)
 
-### 7. 批量升级所有用户金库（如 owner 为平台）
+---
+
+## 五、Flow EVM 主网部署流程
+
+### 1. 部署到 Flow EVM 主网
 
 ```shell
-npx hardhat run scripts/batchUpgrade.ts --network flow
+# 一键部署到主网
+./scripts/deploy_verify_create.sh
 ```
 
--   需先将 BOT 地址添加到工厂的 BOT_ROLE。
+### 2. 在主网环境下运行测试
+
+```bash
+# 在 Flow EVM 主网运行真实交换测试
+npx hardhat test test/03_swap.test.js --network flow
+```
+
+### 3. 使用 Flow 钱包与合约交互
+
+1. 设置 [Flow 钱包](https://wallet.flow.com/)
+2. 连接到主网
+3. 与合约交互（存款、取款等）
+4. Flow 钱包会自动赞助 gas 费用
+
+### 4. 在 Flowscan 上查看合约
+
+- 主网: [https://evm.flowscan.io/](https://evm.flowscan.io/)
 
 ---
 
-## 六、脚本模板
-
-### 1. deposit.ts（用户存款脚本模板）
-
-```typescript
-import { ethers } from "hardhat";
-
-async function main() {
-    const [user] = await ethers.getSigners();
-    const vaultAddress = process.env.VAULT_ADDRESS!;
-    const tokenAddress = process.env.TOKEN_ADDRESS!;
-    const amount = ethers.utils.parseUnits("100", 18); // 100 Token
-
-    const Vault = await ethers.getContractAt(
-        "PersonalVaultUpgradeable",
-        vaultAddress
-    );
-
-    // 选项 1: 存入 ERC20 代币
-    if (tokenAddress) {
-        // 1. 先授权
-        const ERC20 = await ethers.getContractAt("IERC20", tokenAddress);
-        await ERC20.connect(user).approve(vaultAddress, amount);
-
-        // 2. 存款
-        const tx = await Vault.connect(user).deposit(tokenAddress, amount);
-        await tx.wait();
-        console.log(`Deposited ${ethers.formatEther(amount)} ERC20 tokens`);
-    }
-    // 选项 2: 存入原生代币
-    else {
-        const nativeAmount = ethers.parseEther("0.01"); // 0.01 ETH/FLOW
-        const tx = await Vault.connect(user).depositNative({
-            value: nativeAmount,
-        });
-        await tx.wait();
-        console.log(
-            `Deposited ${ethers.formatEther(nativeAmount)} native tokens`
-        );
-    }
-}
-main();
-```
-
-### 2. withdraw.ts（用户取款脚本模板）
-
-```typescript
-import { ethers } from "hardhat";
-
-async function main() {
-    const [user] = await ethers.getSigners();
-    const vaultAddress = process.env.VAULT_ADDRESS!;
-    const tokenAddress = process.env.TOKEN_ADDRESS!;
-    const amount = ethers.utils.parseUnits("10", 18); // 10 Token
-
-    const Vault = await ethers.getContractAt(
-        "PersonalVaultUpgradeable",
-        vaultAddress
-    );
-
-    // 选项 1: 提取 ERC20 代币
-    if (tokenAddress) {
-        const tx = await Vault.connect(user).withdraw(tokenAddress, amount);
-        await tx.wait();
-        console.log(`Withdrawn ${ethers.formatEther(amount)} ERC20 tokens`);
-    }
-    // 选项 2: 提取原生代币
-    else {
-        const nativeAmount = ethers.parseEther("0.005"); // 0.005 ETH/FLOW
-        const tx = await Vault.connect(user).withdrawNative(nativeAmount);
-        await tx.wait();
-        console.log(
-            `Withdrawn ${ethers.formatEther(nativeAmount)} native tokens`
-        );
-    }
-}
-main();
-```
-
-### 3. botSwap.ts（BOT 发起 swap 脚本模板）
-
-```typescript
-import { ethers } from "hardhat";
-
-async function main() {
-    const [bot] = await ethers.getSigners();
-    const vaultAddress = process.env.VAULT_ADDRESS!;
-    const Vault = await ethers.getContractAt(
-        "PersonalVaultUpgradeable",
-        vaultAddress
-    );
-
-    // 获取原生代币地址常量
-    const NATIVE_TOKEN = await Vault.NATIVE_TOKEN();
-    const wrappedNative = await Vault.WRAPPED_NATIVE();
-
-    // 选择交换类型
-    const swapType = process.env.SWAP_TYPE || "erc20";
-    const amountOutMin = 0;
-
-    // 费用参数
-    const feeRecipient = process.env.FEE_RECIPIENT || ethers.ZeroAddress;
-    const feeRate = Number(process.env.FEE_RATE) || 0; // 按百万分之一为单位
-
-    let tokenIn, tokenOut, amountIn, tx;
-
-    switch (swapType) {
-        case "native_to_erc20":
-            // 交换原生代币为 ERC20 代币
-            tokenIn = NATIVE_TOKEN;
-            tokenOut = process.env.TOKEN_OUT!;
-            amountIn = ethers.parseEther("0.01");
-            tx = await Vault.connect(bot).swapExactInputSingle(
-                tokenIn,
-                tokenOut,
-                amountIn,
-                amountOutMin,
-                feeRecipient,
-                feeRate
-            );
-            break;
-
-        case "erc20_to_native":
-            // 交换 ERC20 代币为原生代币
-            tokenIn = process.env.TOKEN_IN!;
-            tokenOut = NATIVE_TOKEN;
-            amountIn = ethers.parseUnits("1", 18);
-            tx = await Vault.connect(bot).swapExactInputSingle(
-                tokenIn,
-                tokenOut,
-                amountIn,
-                amountOutMin,
-                feeRecipient,
-                feeRate
-            );
-            break;
-
-        default:
-            // 标准 ERC20 代币交换
-            tokenIn = process.env.TOKEN_IN!;
-            tokenOut = process.env.TOKEN_OUT!;
-            amountIn = ethers.parseUnits("1", 18);
-            tx = await Vault.connect(bot).swapExactInputSingle(
-                tokenIn,
-                tokenOut,
-                amountIn,
-                amountOutMin,
-                feeRecipient,
-                feeRate
-            );
-    }
-
-    await tx.wait();
-    console.log(`Swap from ${tokenIn} to ${tokenOut} successful`);
-}
-main();
-```
-
-### 4. batchUpgrade.ts（批量升级脚本模板，需平台为 owner）
-
-```typescript
-import { ethers } from "hardhat";
-
-async function main() {
-    const factoryAddress = process.env.FACTORY_ADDRESS!;
-    const newImpl = process.env.NEW_IMPLEMENTATION!;
-    const Factory = await ethers.getContractAt(
-        "PersonalVaultFactory",
-        factoryAddress
-    );
-    const vaultCount = await Factory.allVaults.length;
-    const Vault = await ethers.getContractFactory("PersonalVaultUpgradeable");
-    for (let i = 0; i < vaultCount; i++) {
-        const proxyAddr = await Factory.allVaults(i);
-        const proxy = Vault.attach(proxyAddr);
-        const tx = await proxy.upgradeTo(newImpl);
-        await tx.wait();
-        console.log(`Upgraded vault ${proxyAddr} to ${newImpl}`);
-    }
-}
-main();
-```
-
----
-
-## 七、原生代币支持
+## 六、原生代币支持
 
 ### 1. 原生代币功能概述
 
-PersonalVaultUpgradeable 合约现已支持原生代币（如 ETH 或 FLOW）的存取和交换功能：
+PersonalVaultUpgradeableUniV2 合约现已支持原生代币（如 ETH 或 FLOW）的存取和交换功能：
 
--   使用特殊地址 `0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE` 表示原生代币
--   支持原生代币的存入和提取
--   支持原生代币与 ERC20 代币之间的交换
--   自动处理原生代币与包装原生代币（如 WETH 或 WFLOW）的转换
+- 使用特殊地址 `0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE` 表示原生代币
+- 支持原生代币的存入和提取
+- 支持原生代币与 ERC20 代币之间的交换
+- 自动处理原生代币与包装原生代币（如 WETH 或 WFLOW）的转换
 
 ### 2. 原生代币相关函数
 
--   `depositNative()`: 存入原生代币（需要发送相应数量的 ETH/FLOW）
--   `withdrawNative(uint256 amount)`: 提取指定数量的原生代币
--   `receive()`: 允许合约接收原生代币转账
+- `depositNative()`: 存入原生代币（需要发送相应数量的 ETH/FLOW）
+- `withdrawNative(uint256 amount)`: 提取指定数量的原生代币
+- `receive()`: 允许合约接收原生代币转账
 
 ### 3. 原生代币交换
 
 原生代币交换使用 `swapExactInputSingle` 函数，与 ERC20 代币交换使用相同的接口：
 
--   当 `tokenIn` 为原生代币地址时，使用金库中的原生代币余额进行交换
--   当 `tokenOut` 为原生代币地址时，交换结果会自动转换为原生代币并更新金库余额
+- 当 `tokenIn` 为原生代币地址时，使用金库中的原生代币余额进行交换
+- 当 `tokenOut` 为原生代币地址时，交换结果会自动转换为原生代币并更新金库余额
 
-### 4. 使用示例
+### 4. 在测试中的使用示例
 
-```typescript
+参考 `test/02_native_token.test.js` 和 `test/03_swap.test.js` 文件中的测试用例：
+
+```javascript
 // 存入原生代币
-const depositAmount = ethers.parseEther("0.1");
-await vault.connect(user).depositNative({ value: depositAmount });
+await vault.connect(user).depositNative({ value: ethers.parseEther("0.1") });
 
 // 提取原生代币
-const withdrawAmount = ethers.parseEther("0.05");
-await vault.connect(user).withdrawNative(withdrawAmount);
+await vault.connect(user).withdrawNative(ethers.parseEther("0.05"));
 
 // 交换原生代币为 ERC20 代币（带费用）
 const NATIVE_TOKEN = await vault.NATIVE_TOKEN();
-const feeRecipient = "0x..."; // 费用收取人地址
-const feeRate = 1000; // 0.1% 费率
 await vault.connect(bot).swapExactInputSingle(
-    NATIVE_TOKEN,
-    TOKEN_ADDRESS,
-    ethers.parseEther("0.01"),
-    1, // 最小输出金额
-    feeRecipient,
-    feeRate
+  NATIVE_TOKEN,
+  TOKEN_ADDRESS,
+  ethers.parseEther("0.01"),
+  0, // 最小输出金额
+  feeRecipient,
+  feeRate
 );
 ```
 
-## 八、费用机制
+## 七、费用机制
 
 ### 1. 费用参数
 
--   `feeRecipient`: 费用收取人地址
--   `feeRate`: 费率，按百万分之一为基本单位
-    -   1 = 0.0001%
-    -   1000 = 0.1%
-    -   10000 = 1%
+- `feeRecipient`: 费用收取人地址
+- `feeRate`: 费率，按百万分之一为基本单位
+  - 1 = 0.0001%
+  - 1000 = 0.1%
+  - 10000 = 1%
 
 ### 2. 费用计算
 
 费用从交换输出中扣除：
 
--   用户最终获得：`amountOut - feeAmount`
--   费用金额：`feeAmount = (amountOut * feeRate) / 1000000`
+- 用户最终获得：`amountOut - feeAmount`
+- 费用金额：`feeAmount = (amountOut * feeRate) / 1000000`
 
 ### 3. 环境变量设置
 
@@ -466,24 +248,32 @@ export FEE_RECIPIENT=0x... # 费用收取人地址
 export FEE_RATE=1000       # 费率，1000 = 0.1%
 ```
 
-## 九、测试
+## 八、测试
 
-建议使用 Hardhat+@openzeppelin/hardhat-upgrades 编写测试用例，覆盖存取款、升级、权限管理等核心场景。
+项目使用 Hardhat+JavaScript 编写了完整的测试用例，覆盖存取款、升级、权限管理、原生代币操作和真实 DEX 交换等核心场景。测试文件位于 `test/` 目录下，可以在本地网络和 Flow EVM 主网上运行。
+
+### 测试覆盖范围
+
+1. **基本功能测试**：用户创建、ERC20 存取款、权限管理
+2. **原生代币测试**：原生代币存取款、权限验证
+3. **交换功能测试**：DEX 交换权限、真实环境交换测试
 
 ---
 
-### 【2025-06-13 Flow 主网部署信息】
+### 【Flow EVM 主网部署信息】
 
--   PersonalVaultUpgradeable implementation 地址：
-    `0x2E3b9Bb10a643DaDEDe356049e0bfdF0B6aDcd8a`
--   PersonalVaultFactory 地址：
-    `0x486eDaD5bBbDC8eD5518172b48866cE747899D89`
+- PersonalVaultUpgradeableUniV2 implementation 地址：
+  `0x2E3b9Bb10a643DaDEDe356049e0bfdF0B6aDcd8a`
+- PersonalVaultFactoryUniV2 地址：
+  `0x486eDaD5bBbDC8eD5518172b48866cE747899D89`
 
 **推荐环境变量设置：**
 
 ```shell
 PERSONAL_VAULT_IMPL=0x2E3b9Bb10a643DaDEDe356049e0bfdF0B6aDcd8a
 FACTORY_ADDRESS=0x486eDaD5bBbDC8eD5518172b48866cE747899D89
+SWAP_ROUTER=0xf45AFe28fd5519d5f8C1d4787a4D5f724C0eFa4d
+WRAPPED_NATIVE=0xd3bF53DAC106A0290B0483EcBC89d40FcC961f3e
 ```
 
 可直接用于本地或主网脚本测试。

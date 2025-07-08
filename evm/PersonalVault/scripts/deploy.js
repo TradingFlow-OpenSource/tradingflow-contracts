@@ -1,9 +1,8 @@
 // 部署PersonalVaultUpgradeableUniV2和PersonalVaultFactoryUniV2合约
 const { ethers } = require("hardhat");
-require("dotenv").config();
-
-// 从环境变量获取机器人地址，如果未设置则使用部署者地址
-const BOT_ADDRESS = process.env.BOT_ADDRESS || "";
+require("dotenv").config({ path: "../.env" });
+// 从环境变量获取机器人私钥，如果未设置则使用部署者地址
+const BOT_PRIVATE_KEY = process.env.BOT_PRIVATE_KEY || "";
 
 async function main() {
   console.log("开始部署PersonalVault合约...");
@@ -18,19 +17,32 @@ async function main() {
 
   // 1. 部署PersonalVaultUpgradeableUniV2实现合约
   console.log("\n部署PersonalVaultUpgradeableUniV2实现合约...");
-  const PersonalVaultUpgradeableUniV2 = await ethers.getContractFactory("PersonalVaultUpgradeableUniV2");
-  const personalVaultImplementation = await PersonalVaultUpgradeableUniV2.deploy();
+  const PersonalVaultUpgradeableUniV2 = await ethers.getContractFactory(
+    "PersonalVaultUpgradeableUniV2"
+  );
+  const personalVaultImplementation =
+    await PersonalVaultUpgradeableUniV2.deploy();
   await personalVaultImplementation.waitForDeployment();
   const implementationAddress = await personalVaultImplementation.getAddress();
-  console.log(`PersonalVaultUpgradeableUniV2实现合约已部署到: ${implementationAddress}`);
+  console.log(
+    `PersonalVaultUpgradeableUniV2实现合约已部署到: ${implementationAddress}`
+  );
 
   // 确定机器人地址
-  const botAddress = BOT_ADDRESS || deployer.address;
+  let botAddress;
+  if (BOT_PRIVATE_KEY) {
+    const botWallet = new ethers.Wallet(BOT_PRIVATE_KEY);
+    botAddress = botWallet.address;
+  } else {
+    botAddress = deployer.address;
+  }
   console.log(`使用机器人地址: ${botAddress}`);
 
   // 2. 部署PersonalVaultFactoryUniV2合约
   console.log("\n部署PersonalVaultFactoryUniV2合约...");
-  const PersonalVaultFactoryUniV2 = await ethers.getContractFactory("PersonalVaultFactoryUniV2");
+  const PersonalVaultFactoryUniV2 = await ethers.getContractFactory(
+    "PersonalVaultFactoryUniV2"
+  );
   const personalVaultFactory = await PersonalVaultFactoryUniV2.deploy(
     deployer.address, // 初始管理员
     implementationAddress, // 实现合约地址
@@ -42,23 +54,28 @@ async function main() {
 
   // 3. 验证合约部署
   console.log("\n验证合约部署...");
-  
+
   // 验证工厂合约
-  const factory = await ethers.getContractAt("PersonalVaultFactoryUniV2", factoryAddress);
+  const factory = await ethers.getContractAt(
+    "PersonalVaultFactoryUniV2",
+    factoryAddress
+  );
   const storedImplementation = await factory.personalVaultImplementation();
   console.log(`工厂合约存储的实现合约地址: ${storedImplementation}`);
-  console.log(`实现合约地址匹配: ${storedImplementation === implementationAddress}`);
-  
+  console.log(
+    `实现合约地址匹配: ${storedImplementation === implementationAddress}`
+  );
+
   // 验证工厂合约的管理员
   const adminRole = await factory.DEFAULT_ADMIN_ROLE();
   const hasAdminRole = await factory.hasRole(adminRole, deployer.address);
   console.log(`部署者是否有管理员角色: ${hasAdminRole}`);
-  
+
   // 验证机器人地址
   const storedBotAddress = await factory.botAddress();
   console.log(`工厂合约存储的机器人地址: ${storedBotAddress}`);
   console.log(`机器人地址匹配: ${storedBotAddress === botAddress}`);
-  
+
   // 验证机器人角色
   const botRole = await factory.BOT_ROLE();
   const hasBotRole = await factory.hasRole(botRole, botAddress);
@@ -69,12 +86,18 @@ async function main() {
   console.log(`FACTORY_ADDRESS=${factoryAddress}`);
   console.log(`PERSONAL_VAULT_IMPL=${implementationAddress}`);
   console.log("\n请确保还设置了以下环境变量:");
-  console.log("SWAP_ROUTER=0xf45AFe28fd5519d5f8C1d4787a4D5f724C0eFa4d  # Flow EVM 主网 PunchSwap V2 Router");
-  console.log("WRAPPED_NATIVE=0xd3bF53DAC106A0290B0483EcBC89d40FcC961f3e  # Flow EVM 主网 WFLOW");
+  console.log(
+    "SWAP_ROUTER=0xf45AFe28fd5519d5f8C1d4787a4D5f724C0eFa4d  # Flow EVM 主网 PunchSwap V2 Router"
+  );
+  console.log(
+    "WRAPPED_NATIVE=0xd3bF53DAC106A0290B0483EcBC89d40FcC961f3e  # Flow EVM 主网 WFLOW"
+  );
   console.log("USER_PRIVATE_KEY=<用户钱包私钥>");
   console.log("BOT_PRIVATE_KEY=<机器人钱包私钥>  # 或者使用BOT_ADDRESS");
   console.log("NETWORK=flow  # 使用Flow EVM主网");
-  console.log("FLOW_RPC_URL=https://mainnet.evm.nodes.onflow.org  # Flow EVM RPC URL");
+  console.log(
+    "FLOW_RPC_URL=https://mainnet.evm.nodes.onflow.org  # Flow EVM RPC URL"
+  );
 }
 
 main()
