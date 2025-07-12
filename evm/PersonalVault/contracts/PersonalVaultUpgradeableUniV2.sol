@@ -52,6 +52,8 @@ contract PersonalVaultUpgradeableUniV2 is Initializable, OwnableUpgradeable, Ree
 
     // --- Balances ---
     mapping(address => uint256) public balances; // token address => amount
+    address[] private tokenList; // 存储所有已添加的代币地址
+    mapping(address => bool) private tokenExists; // 快速检查代币是否已添加
 
     function initialize(address _investor, address admin, address bot, address _swapRouter, address _wrappedNative, address factory) public initializer {
         __Ownable_init(admin);
@@ -91,6 +93,13 @@ contract PersonalVaultUpgradeableUniV2 is Initializable, OwnableUpgradeable, Ree
         require(token != NATIVE_TOKEN, "Use depositNative");
         IERC20(token).transferFrom(msg.sender, address(this), amount);
         balances[token] += amount;
+        
+        // 如果是新代币，添加到代币列表
+        if (!tokenExists[token]) {
+            tokenList.push(token);
+            tokenExists[token] = true;
+        }
+        
         emit UserDeposit(msg.sender, token, amount, block.timestamp);
     }
     
@@ -99,6 +108,13 @@ contract PersonalVaultUpgradeableUniV2 is Initializable, OwnableUpgradeable, Ree
         require(msg.sender == investor, "Only investor");
         require(msg.value > 0, "Amount=0");
         balances[NATIVE_TOKEN] += msg.value;
+        
+        // 如果是新代币，添加到代币列表
+        if (!tokenExists[NATIVE_TOKEN]) {
+            tokenList.push(NATIVE_TOKEN);
+            tokenExists[NATIVE_TOKEN] = true;
+        }
+        
         emit UserDeposit(msg.sender, NATIVE_TOKEN, msg.value, block.timestamp);
     }
 
@@ -244,6 +260,12 @@ contract PersonalVaultUpgradeableUniV2 is Initializable, OwnableUpgradeable, Ree
         // 更新用户余额（扣除费用后的金额）
         balances[tokenOut] += userAmount;
         
+        // 如果输出代币是新代币，添加到代币列表
+        if (!tokenExists[tokenOut]) {
+            tokenList.push(tokenOut);
+            tokenExists[tokenOut] = true;
+        }
+        
         emit TradeSignal(
             investor, 
             tokenIn, 
@@ -260,5 +282,14 @@ contract PersonalVaultUpgradeableUniV2 is Initializable, OwnableUpgradeable, Ree
     // --- Get Balance ---
     function getBalance(address token) external view returns (uint256) {
         return balances[token];
+    }
+    
+    // --- Get Tokens ---
+    /**
+     * @notice 获取金库中所有已添加的代币地址列表
+     * @return 代币地址数组
+     */
+    function getTokens() external view returns (address[] memory) {
+        return tokenList;
     }
 }
