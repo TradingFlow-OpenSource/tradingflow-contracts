@@ -171,6 +171,7 @@ describe("PersonalVaultUpgradeableUniV3 - Swap与权限测试 (BSC PancakeSwap V
       vault.connect(user).swapExactInputSingle(
         NATIVE_TOKEN_ADDRESS,
         wrappedNative,
+        3000, // fee tier (0.3%)
         ethers.parseEther("1"),
         0,
         await admin.getAddress(), // feeRecipient
@@ -188,6 +189,7 @@ describe("PersonalVaultUpgradeableUniV3 - Swap与权限测试 (BSC PancakeSwap V
         const tx = await vault.connect(botSigner).swapExactInputSingle(
           NATIVE_TOKEN_ADDRESS,
           wrappedNative,
+          3000, // fee tier (0.3%)
           ethers.parseEther("1000"),
           0,
           await admin.getAddress(), // feeRecipient
@@ -314,6 +316,7 @@ describe("PersonalVaultUpgradeableUniV3 - Swap与权限测试 (BSC PancakeSwap V
         const tx = await vault.connect(botSigner).swapExactInputSingle(
           NATIVE_TOKEN_ADDRESS,
           TOKEN_B_ADDRESS,
+          3000, // fee tier (0.3%)
           swapAmount,
           0,
           await admin.getAddress(), // feeRecipient
@@ -371,6 +374,7 @@ describe("PersonalVaultUpgradeableUniV3 - Swap与权限测试 (BSC PancakeSwap V
         const tx = await vault.connect(bot).swapExactInputSingle(
           TOKEN_B_ADDRESS,
           NATIVE_TOKEN_ADDRESS,
+          3000, // fee tier (0.3%)
           swapAmount,
           0,
           await admin.getAddress(), // feeRecipient
@@ -455,6 +459,7 @@ describe("PersonalVaultUpgradeableUniV3 - Swap与权限测试 (BSC PancakeSwap V
           const swapTx = await vault.connect(bot).swapExactInputSingle(
             NATIVE_TOKEN_ADDRESS,
             TOKEN_B_ADDRESS,
+            3000, // fee tier (0.3%)
             bnbToSwap,
             0, // 接受任何数量的输出
             await admin.getAddress(), // feeRecipient
@@ -500,6 +505,7 @@ describe("PersonalVaultUpgradeableUniV3 - Swap与权限测试 (BSC PancakeSwap V
         const tx = await vault.connect(bot).swapExactInputSingle(
           TOKEN_B_ADDRESS,
           TOKEN_C_ADDRESS,
+          3000, // fee tier (0.3%)
           swapAmount,
           0,
           await admin.getAddress(), // feeRecipient
