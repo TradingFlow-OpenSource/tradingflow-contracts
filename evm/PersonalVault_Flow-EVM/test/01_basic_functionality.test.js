@@ -27,7 +27,7 @@ describe("PersonalVaultUpgradeableUniV2 - 基本功能测试", function () {
   let wrappedNative;
 
   const FACTORY_ADDRESS = process.env.FACTORY_ADDRESS;
-  const PERSONAL_VAULT_IMPL = process.env.PERSONAL_VAULT_IMPL;
+  const PERSONAL_VAULT_IMPL_ADDRESS = process.env.PERSONAL_VAULT_IMPL_ADDRESS;
   const TEST_TOKEN_ADDRESS = process.env.TEST_TOKEN_ADDRESS;
   const SWAP_ROUTER = process.env.SWAP_ROUTER;
   const WRAPPED_NATIVE = process.env.WRAPPED_NATIVE;
@@ -53,7 +53,7 @@ describe("PersonalVaultUpgradeableUniV2 - 基本功能测试", function () {
     // 判断是否使用.env配置的合约/币地址
     let deployMode = !(
       FACTORY_ADDRESS &&
-      PERSONAL_VAULT_IMPL &&
+      PERSONAL_VAULT_IMPL_ADDRESS &&
       TEST_TOKEN_ADDRESS
     );
     if (deployMode) {
@@ -95,7 +95,7 @@ describe("PersonalVaultUpgradeableUniV2 - 基本功能测试", function () {
     } else {
       // 直接用.env指定的地址
       tokenAddress = TEST_TOKEN_ADDRESS;
-      vaultImplAddress = PERSONAL_VAULT_IMPL;
+      vaultImplAddress = PERSONAL_VAULT_IMPL_ADDRESS;
       factoryAddress = FACTORY_ADDRESS;
       console.log("[地址复用模式] 使用.env中的合约和币地址:");
       console.log("测试代币:", tokenAddress);

@@ -4,13 +4,13 @@ pragma solidity ^0.8.20;
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/access/AccessControl.sol";
 import "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
-import "./PersonalVaultUpgradeableUniV2.sol";
+import "./PersonalVaultUpgradeableUniV3.sol";
 
 /**
- * @title PersonalVaultFactoryUniV2
- * @notice 个人金库工厂合约，用于创建和管理用户的个人金库，使用Uniswap V2/PunchSwap V2进行交换
+ * @title PersonalVaultFactoryUniV3
+ * @notice 个人金库工厂合约，用于创建和管理用户的个人金库，使用PancakeSwap V3进行交换
  */
-contract PersonalVaultFactoryUniV2 is Ownable, AccessControl {
+contract PersonalVaultFactoryUniV3 is Ownable, AccessControl {
     // Role definitions
     bytes32 public constant ADMIN_ROLE = keccak256("ADMIN_ROLE");
     bytes32 public constant BOT_ROLE = keccak256("BOT_ROLE");
@@ -82,7 +82,7 @@ contract PersonalVaultFactoryUniV2 is Ownable, AccessControl {
         
         // Encode initialize data for proxy
         bytes memory data = abi.encodeWithSelector(
-            PersonalVaultUpgradeableUniV2.initialize.selector,
+            PersonalVaultUpgradeableUniV3.initialize.selector,
             msg.sender, // investor
             msg.sender, // admin
             botAddress, // bot
@@ -102,7 +102,7 @@ contract PersonalVaultFactoryUniV2 is Ownable, AccessControl {
         allVaults.push(vaultAddress);
         
         // Grant the factory admin role on the vault
-        PersonalVaultUpgradeableUniV2 newVault = PersonalVaultUpgradeableUniV2(vaultAddress);
+        PersonalVaultUpgradeableUniV3 newVault = PersonalVaultUpgradeableUniV3(vaultAddress);
         newVault.grantRole(newVault.DEFAULT_ADMIN_ROLE(), address(this));
         
         // 为新金库授予ORACLE_ROLE给机器人地址
@@ -129,7 +129,7 @@ contract PersonalVaultFactoryUniV2 is Ownable, AccessControl {
             
             // 从所有金库中撤销旧机器人的权限
             for (uint i = 0; i < allVaults.length; i++) {
-                PersonalVaultUpgradeableUniV2 vault = PersonalVaultUpgradeableUniV2(payable(allVaults[i]));
+                PersonalVaultUpgradeableUniV3 vault = PersonalVaultUpgradeableUniV3(payable(allVaults[i]));
                 vault.revokeRole(vault.ORACLE_ROLE(), oldBotAddress);
             }
         }
@@ -140,7 +140,7 @@ contract PersonalVaultFactoryUniV2 is Ownable, AccessControl {
         
         // 为所有金库授予新机器人的权限
         for (uint i = 0; i < allVaults.length; i++) {
-            PersonalVaultUpgradeableUniV2 vault = PersonalVaultUpgradeableUniV2(payable(allVaults[i]));
+            PersonalVaultUpgradeableUniV3 vault = PersonalVaultUpgradeableUniV3(payable(allVaults[i]));
             vault.grantRole(vault.ORACLE_ROLE(), newBotAddress);
         }
         

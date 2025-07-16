@@ -8,13 +8,13 @@ async function main() {
 
   // 获取环境变量
   const factoryAddress = process.env.FACTORY_ADDRESS;
-  const implAddress = process.env.PERSONAL_VAULT_IMPL;
+  const implAddress = process.env.PERSONAL_VAULT_IMPL_ADDRESS;
   const swapRouter = process.env.SWAP_ROUTER;
   const wrappedNative = process.env.WRAPPED_NATIVE;
 
   if (!factoryAddress || !implAddress || !swapRouter || !wrappedNative) {
     console.error(
-      "缺少必要的环境变量: FACTORY_ADDRESS, PERSONAL_VAULT_IMPL, SWAP_ROUTER, WRAPPED_NATIVE"
+      "缺少必要的环境变量: FACTORY_ADDRESS, PERSONAL_VAULT_IMPL_ADDRESS, SWAP_ROUTER, WRAPPED_NATIVE"
     );
     process.exit(1);
   }

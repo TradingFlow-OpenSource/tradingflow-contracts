@@ -7,11 +7,16 @@ async function main() {
 
   // 1. 先部署逻辑合约
   console.log("Deploying PersonalVaultUpgradeableUniV2 implementation...");
-  const VaultImpl = await ethers.getContractFactory("PersonalVaultUpgradeableUniV2");
+  const VaultImpl = await ethers.getContractFactory(
+    "PersonalVaultUpgradeableUniV2"
+  );
   const implementation = await VaultImpl.deploy();
   await implementation.waitForDeployment();
   const implAddress = await implementation.getAddress();
-  console.log("PersonalVaultUpgradeableUniV2 implementation deployed to:", implAddress);
+  console.log(
+    "PersonalVaultUpgradeableUniV2 implementation deployed to:",
+    implAddress
+  );
 
   // 2. 再部署工厂合约
   console.log("Deploying PersonalVaultFactoryUniV2...");
@@ -23,7 +28,7 @@ async function main() {
 
   // 3. 输出环境变量设置指南
   console.log("\nFor future scripts, set these environment variables:\n");
-  console.log(`PERSONAL_VAULT_IMPL=${implAddress}`);
+  console.log(`PERSONAL_VAULT_IMPL_ADDRESS=${implAddress}`);
   console.log(`FACTORY_ADDRESS=${factoryAddress}`);
 }
 

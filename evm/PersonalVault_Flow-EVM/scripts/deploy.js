@@ -84,7 +84,7 @@ async function main() {
   // 4. 输出部署信息
   console.log("\n部署完成！请将以下信息添加到.env文件中:");
   console.log(`FACTORY_ADDRESS=${factoryAddress}`);
-  console.log(`PERSONAL_VAULT_IMPL=${implementationAddress}`);
+  console.log(`PERSONAL_VAULT_IMPL_ADDRESS=${implementationAddress}`);
   console.log("\n请确保还设置了以下环境变量:");
   console.log(
     "SWAP_ROUTER=0xf45AFe28fd5519d5f8C1d4787a4D5f724C0eFa4d  # Flow EVM 主网 PunchSwap V2 Router"

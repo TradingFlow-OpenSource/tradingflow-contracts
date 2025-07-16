@@ -17,7 +17,7 @@ let TOKEN_B_ADDRESS, TOKEN_C_ADDRESS;
 
 const WRAPPED_NATIVE = process.env.WRAPPED_NATIVE || "";
 const FACTORY_ADDRESS = process.env.FACTORY_ADDRESS;
-const PERSONAL_VAULT_IMPL = process.env.PERSONAL_VAULT_IMPL;
+const PERSONAL_VAULT_IMPL_ADDRESS = process.env.PERSONAL_VAULT_IMPL_ADDRESS;
 const TEST_TOKEN_ADDRESS = process.env.TEST_TOKEN_ADDRESS;
 const SWAP_ROUTER = process.env.SWAP_ROUTER;
 
@@ -37,10 +37,13 @@ describe("PersonalVaultUpgradeableUniV2 - Swap与权限测试", function () {
     console.log("机器人地址:", await bot.getAddress());
 
     // 检查是否在地址复用模式
-    if (process.env.FACTORY_ADDRESS && process.env.PERSONAL_VAULT_IMPL) {
+    if (
+      process.env.FACTORY_ADDRESS &&
+      process.env.PERSONAL_VAULT_IMPL_ADDRESS
+    ) {
       console.log("[地址复用模式] 使用.env中的合约和币地址:");
       tokenAddress = process.env.TEST_TOKEN_ADDRESS;
-      vaultImplAddress = process.env.PERSONAL_VAULT_IMPL;
+      vaultImplAddress = process.env.PERSONAL_VAULT_IMPL_ADDRESS;
       factoryAddress = process.env.FACTORY_ADDRESS;
       swapRouter = process.env.SWAP_ROUTER;
       wrappedNative = process.env.WRAPPED_NATIVE;

@@ -1,11 +1,11 @@
-// 部署PersonalVaultUpgradeableUniV2和PersonalVaultFactoryUniV2合约
+// 部署PersonalVaultUpgradeableUniV3和PersonalVaultFactoryUniV3合约到BSC
 const { ethers } = require("hardhat");
 require("dotenv").config({ path: "../.env" });
 // 从环境变量获取机器人私钥，如果未设置则使用部署者地址
 const BOT_PRIVATE_KEY = process.env.BOT_PRIVATE_KEY || "";
 
 async function main() {
-  console.log("开始部署PersonalVault合约...");
+  console.log("开始部署PersonalVault合约到BSC...");
 
   // 获取部署账户
   const [deployer] = await ethers.getSigners();
@@ -15,17 +15,17 @@ async function main() {
   const balance = await deployer.provider.getBalance(deployer.address);
   console.log(`部署账户余额: ${ethers.formatEther(balance)} ETH`);
 
-  // 1. 部署PersonalVaultUpgradeableUniV2实现合约
-  console.log("\n部署PersonalVaultUpgradeableUniV2实现合约...");
-  const PersonalVaultUpgradeableUniV2 = await ethers.getContractFactory(
-    "PersonalVaultUpgradeableUniV2"
+  // 1. 部署PersonalVaultUpgradeableUniV3实现合约
+  console.log("\n部署PersonalVaultUpgradeableUniV3实现合约...");
+  const PersonalVaultUpgradeableUniV3 = await ethers.getContractFactory(
+    "PersonalVaultUpgradeableUniV3"
   );
   const personalVaultImplementation =
-    await PersonalVaultUpgradeableUniV2.deploy();
+    await PersonalVaultUpgradeableUniV3.deploy();
   await personalVaultImplementation.waitForDeployment();
   const implementationAddress = await personalVaultImplementation.getAddress();
   console.log(
-    `PersonalVaultUpgradeableUniV2实现合约已部署到: ${implementationAddress}`
+    `PersonalVaultUpgradeableUniV3实现合约已部署到: ${implementationAddress}`
   );
 
   // 确定机器人地址
@@ -38,26 +38,26 @@ async function main() {
   }
   console.log(`使用机器人地址: ${botAddress}`);
 
-  // 2. 部署PersonalVaultFactoryUniV2合约
-  console.log("\n部署PersonalVaultFactoryUniV2合约...");
-  const PersonalVaultFactoryUniV2 = await ethers.getContractFactory(
-    "PersonalVaultFactoryUniV2"
+  // 2. 部署PersonalVaultFactoryUniV3合约
+  console.log("\n部署PersonalVaultFactoryUniV3合约...");
+  const PersonalVaultFactoryUniV3 = await ethers.getContractFactory(
+    "PersonalVaultFactoryUniV3"
   );
-  const personalVaultFactory = await PersonalVaultFactoryUniV2.deploy(
+  const personalVaultFactory = await PersonalVaultFactoryUniV3.deploy(
     deployer.address, // 初始管理员
     implementationAddress, // 实现合约地址
     botAddress // 机器人地址
   );
   await personalVaultFactory.waitForDeployment();
   const factoryAddress = await personalVaultFactory.getAddress();
-  console.log(`PersonalVaultFactoryUniV2合约已部署到: ${factoryAddress}`);
+  console.log(`PersonalVaultFactoryUniV3合约已部署到: ${factoryAddress}`);
 
   // 3. 验证合约部署
   console.log("\n验证合约部署...");
 
   // 验证工厂合约
   const factory = await ethers.getContractAt(
-    "PersonalVaultFactoryUniV2",
+    "PersonalVaultFactoryUniV3",
     factoryAddress
   );
   const storedImplementation = await factory.personalVaultImplementation();
@@ -84,20 +84,18 @@ async function main() {
   // 4. 输出部署信息
   console.log("\n部署完成！请将以下信息添加到.env文件中:");
   console.log(`FACTORY_ADDRESS=${factoryAddress}`);
-  console.log(`PERSONAL_VAULT_IMPL=${implementationAddress}`);
+  console.log(`PERSONAL_VAULT_IMPL_ADDRESS=${implementationAddress}`);
   console.log("\n请确保还设置了以下环境变量:");
   console.log(
-    "SWAP_ROUTER=0xf45AFe28fd5519d5f8C1d4787a4D5f724C0eFa4d  # Flow EVM 主网 PunchSwap V2 Router"
+    "SWAP_ROUTER=0x1b81D678ffb9C0263b24A97847620C99d213eB14  # BSC PancakeSwap V3 SwapRouter"
   );
   console.log(
-    "WRAPPED_NATIVE=0xd3bF53DAC106A0290B0483EcBC89d40FcC961f3e  # Flow EVM 主网 WFLOW"
+    "WRAPPED_NATIVE=0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c  # BSC WBNB"
   );
   console.log("USER_PRIVATE_KEY=<用户钱包私钥>");
   console.log("BOT_PRIVATE_KEY=<机器人钱包私钥>  # 或者使用BOT_ADDRESS");
-  console.log("NETWORK=flow  # 使用Flow EVM主网");
-  console.log(
-    "FLOW_RPC_URL=https://mainnet.evm.nodes.onflow.org  # Flow EVM RPC URL"
-  );
+  console.log("NETWORK=bsc  # 使用BSC主网");
+  console.log("BSC_RPC_URL=https://bsc-dataseed1.binance.org/  # BSC RPC URL");
 }
 
 main()

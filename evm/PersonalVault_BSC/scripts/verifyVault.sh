@@ -32,8 +32,8 @@ if [ -z "$VAULT_ADDRESS" ]; then
 fi
 
 if [ -z "$NETWORK" ]; then
-    echo -e "${YELLOW}⚠️  警告：未设置NETWORK，使用默认值 'flow'${NC}"
-    export NETWORK="flow"
+    echo -e "${YELLOW}⚠️  警告：未设置NETWORK，使用默认值 'bsc'${NC}"
+    export NETWORK="bsc"
 fi
 
 echo -e "${GREEN}📋 配置信息：${NC}"
@@ -45,7 +45,7 @@ echo -e "${GREEN}🚀 开始验证合约源码...${NC}"
 echo ""
 
 # 验证合约
-echo "正在验证 PersonalVaultUpgradeableUniV2 合约源码..."
+echo "正在验证 PersonalVaultUpgradeableUniV3 合约源码..."
 echo "合约地址: $VAULT_ADDRESS"
 echo ""
 
@@ -55,13 +55,13 @@ npx hardhat verify --network $NETWORK $VAULT_ADDRESS
 if [ $? -eq 0 ]; then
     echo ""
     echo -e "${GREEN}🎉 合约源码验证完成！${NC}"
-    echo -e "${GREEN}🔗 Flowscan链接: https://evm.flowscan.io/address/${VAULT_ADDRESS}${NC}"
+    echo -e "${GREEN}🔗 BSCScan链接: https://bscscan.com/address/${VAULT_ADDRESS}${NC}"
 else
     echo ""
     echo -e "${RED}❌ 合约源码验证失败${NC}"
     echo -e "${YELLOW}💡 提示：${NC}"
     echo "   - 确认合约地址是否正确"
-    echo "   - 确认合约是否为 PersonalVaultUpgradeableUniV2"
+    echo "   - 确认合约是否为 PersonalVaultUpgradeableUniV3"
     echo "   - 合约可能已经验证过了"
     echo "   - 网络配置是否正确"
     exit 1

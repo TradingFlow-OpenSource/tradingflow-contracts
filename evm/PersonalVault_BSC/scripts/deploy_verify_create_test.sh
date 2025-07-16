@@ -6,12 +6,12 @@ YELLOW='\033[1;33m'
 RED='\033[0;31m'
 NC='\033[0m' # No Color
 
-echo -e "${YELLOW}========== 个人金库部署、验证和创建脚本 (bsc) ==========${NC}"
+echo -e "${YELLOW}========== 个人金库部署、验证和创建脚本 (bscTestnet) ==========${NC}"
 
 # 1. 部署合约
 echo -e "${GREEN}步骤 1: 部署合约${NC}"
-echo "正在部署 PersonalVaultUpgradeableUniV3 和 PersonalVaultFactoryUniV3 合约到bsc..."
-npx hardhat run scripts/deploy.js --network bsc
+echo "正在部署 PersonalVaultUpgradeableUniV3 和 PersonalVaultFactoryUniV3 合约到bscTestnet..."
+npx hardhat run scripts/deploy.js --network bscTestnet
 
 # 等待部署完成，给用户时间查看输出
 echo -e "${YELLOW}部署完成。请确认上面显示的合约地址，然后按回车继续...${NC}"
@@ -21,8 +21,8 @@ read -p ""
 source .env
 FACTORY_ADDRESS=${FACTORY_ADDRESS}
 PERSONAL_VAULT_IMPL_ADDRESS=${PERSONAL_VAULT_IMPL_ADDRESS}
-DEPLOYER_ADDRESS=${DEPLOYER_ADDRESS}
-BOT_ADDRESS=${BOT_ADDRESS}
+DEPLOYER_ADDRESS=${DEPLOYER_ADDRESS:-"0x1227c9ED38A2D99f443FF143c36238cedf9B45af"}
+BOT_ADDRESS=${BOT_ADDRESS:-"0xaBf3bDfD5D7Be7B855Bcc861983b7E6A7Bc15b2f"}
 
 # 检查合约地址是否已设置
 if [ -z "$FACTORY_ADDRESS" ] || [ -z "$PERSONAL_VAULT_IMPL_ADDRESS" ]; then
@@ -33,6 +33,7 @@ fi
 
 # 使用实际的部署者地址
 # 从.env文件读取或者手动设置
+DEPLOYER_ADDRESS=${DEPLOYER_ADDRESS:-"0x1227c9ED38A2D99f443FF143c36238cedf9B45af"}
 echo -e "${YELLOW}使用部署者地址: $DEPLOYER_ADDRESS${NC}"
 
 # 2. 验证合约
@@ -56,7 +57,7 @@ while [ $RETRY_COUNT -lt $MAX_RETRIES ] && [ "$VERIFY_SUCCESS" = "false" ]; do
     RETRY_COUNT=$((RETRY_COUNT+1))
     echo -e "${YELLOW}尝试 $RETRY_COUNT/$MAX_RETRIES${NC}"
 
-    if npx hardhat verify --network bsc $FACTORY_ADDRESS $DEPLOYER_ADDRESS $PERSONAL_VAULT_IMPL_ADDRESS $BOT_ADDRESS; then
+    if npx hardhat verify --network bscTestnet $FACTORY_ADDRESS $DEPLOYER_ADDRESS $PERSONAL_VAULT_IMPL_ADDRESS $BOT_ADDRESS; then
         VERIFY_SUCCESS=true
         echo -e "${GREEN}验证成功!${NC}"
     else
@@ -87,7 +88,7 @@ read -p ""
 
 # 3. 创建金库
 echo -e "${GREEN}步骤 3: 创建金库${NC}"
-echo -e "${YELLOW}开始创建金库...${NC}"
-npx hardhat run scripts/createVault.js --network bsc
+echo "正在创建个人金库..."
+npx hardhat run scripts/createVault.js --network bscTestnet
 
 echo -e "${YELLOW}========== 脚本执行完成 ==========${NC}"

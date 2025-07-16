@@ -42,7 +42,7 @@ async function main() {
 
     // 获取工厂合约中的机器人地址
     const factory = await ethers.getContractAt(
-      "PersonalVaultFactoryUniV2",
+      "PersonalVaultFactoryUniV3",
       factoryAddress
     );
     const botAddress = await factory.botAddress();

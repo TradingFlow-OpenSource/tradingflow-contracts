@@ -17,16 +17,16 @@ let TOKEN_B_ADDRESS, TOKEN_C_ADDRESS;
 
 const WRAPPED_NATIVE = process.env.WRAPPED_NATIVE || "";
 const FACTORY_ADDRESS = process.env.FACTORY_ADDRESS;
-const PERSONAL_VAULT_IMPL = process.env.PERSONAL_VAULT_IMPL;
+const PERSONAL_VAULT_IMPL_ADDRESS = process.env.PERSONAL_VAULT_IMPL_ADDRESS;
 const TEST_TOKEN_ADDRESS = process.env.TEST_TOKEN_ADDRESS;
 const SWAP_ROUTER = process.env.SWAP_ROUTER;
 
-describe("PersonalVaultUpgradeableUniV2 - Swap与权限测试", function () {
+describe("PersonalVaultUpgradeableUniV3 - Swap与权限测试 (BSC PancakeSwap V3)", function () {
   this.timeout(600000);
 
   before(async function () {
-    // 如果是在Flow网络上运行，则增加超时时间
-    if (hre.network.name === "flow") {
+    // 如果是在BSC网络上运行，则增加超时时间
+    if (hre.network.name === "bsc" || hre.network.name === "bscTestnet") {
       this.timeout(600000); // 10分钟超时
     }
 
@@ -37,10 +37,13 @@ describe("PersonalVaultUpgradeableUniV2 - Swap与权限测试", function () {
     console.log("机器人地址:", await bot.getAddress());
 
     // 检查是否在地址复用模式
-    if (process.env.FACTORY_ADDRESS && process.env.PERSONAL_VAULT_IMPL) {
+    if (
+      process.env.FACTORY_ADDRESS &&
+      process.env.PERSONAL_VAULT_IMPL_ADDRESS
+    ) {
       console.log("[地址复用模式] 使用.env中的合约和币地址:");
       tokenAddress = process.env.TEST_TOKEN_ADDRESS;
-      vaultImplAddress = process.env.PERSONAL_VAULT_IMPL;
+      vaultImplAddress = process.env.PERSONAL_VAULT_IMPL_ADDRESS;
       factoryAddress = process.env.FACTORY_ADDRESS;
       swapRouter = process.env.SWAP_ROUTER;
       wrappedNative = process.env.WRAPPED_NATIVE;
@@ -51,17 +54,14 @@ describe("PersonalVaultUpgradeableUniV2 - Swap与权限测试", function () {
       console.log("wrappedNative:", wrappedNative);
 
       // 获取已部署的合约实例
-      factory = await ethers.getContractAt(
-        "PersonalVaultFactoryUniV2",
-        factoryAddress
-      );
+      factory = await ethers.getContractAt("PersonalVaultFactoryUniV3", factoryAddress);
       testToken = await ethers.getContractAt("TestToken", tokenAddress);
 
       // 获取用户金库地址
       const vaultAddress = await factory.getVault(await user.getAddress());
       console.log("用户金库地址:", vaultAddress);
       vault = await ethers.getContractAt(
-        "PersonalVaultUpgradeableUniV2",
+        "PersonalVaultUpgradeableUniV3",
         vaultAddress
       );
     } else {
@@ -77,14 +77,19 @@ describe("PersonalVaultUpgradeableUniV2 - Swap与权限测试", function () {
       tokenAddress = await testToken.getAddress();
       console.log("测试代币地址:", tokenAddress);
 
-      // 部署金库实现合约
-      const Vault = await ethers.getContractFactory(
-        "PersonalVaultUpgradeableUniV2"
+      // 部署PersonalVaultUpgradeableUniV3实现合约
+      console.log("部署PersonalVaultUpgradeableUniV3实现合约...");
+      const PersonalVaultUpgradeableUniV3 = await ethers.getContractFactory(
+        "PersonalVaultUpgradeableUniV3"
       );
-      const vaultImplementation = await Vault.deploy();
-      await vaultImplementation.waitForDeployment();
-      vaultImplAddress = await vaultImplementation.getAddress();
-      console.log("金库实现地址:", vaultImplAddress);
+      const personalVaultImplementation =
+        await PersonalVaultUpgradeableUniV3.deploy();
+      await personalVaultImplementation.waitForDeployment();
+      const implementationAddress =
+        await personalVaultImplementation.getAddress();
+      console.log(
+        `PersonalVaultUpgradeableUniV3实现合约已部署到: ${implementationAddress}`
+      );
 
       // 设置swapRouter和wrappedNative参数
       swapRouter = SWAP_ROUTER;
@@ -100,20 +105,22 @@ describe("PersonalVaultUpgradeableUniV2 - Swap与权限测试", function () {
       console.log("swapRouter:", swapRouter);
       console.log("wrappedNative:", wrappedNative);
 
-      // 部署工厂合约
-      const Factory = await ethers.getContractFactory(
-        "PersonalVaultFactoryUniV2"
+      // 部署PersonalVaultFactoryUniV3合约
+      console.log("部署PersonalVaultFactoryUniV3合约...");
+      const PersonalVaultFactoryUniV3 = await ethers.getContractFactory(
+        "PersonalVaultFactoryUniV3"
       );
-      const adminAddress = await admin.getAddress();
-      const botAddress = await bot.getAddress();
-      factory = await Factory.deploy(
-        adminAddress,
-        vaultImplAddress,
-        botAddress
+      const personalVaultFactory = await PersonalVaultFactoryUniV3.deploy(
+        admin.address, // 初始管理员
+        implementationAddress, // 实现合约地址
+        bot.address // 机器人地址
       );
-      await factory.waitForDeployment();
-      factoryAddress = await factory.getAddress();
-      console.log("工厂合约地址:", factoryAddress);
+      await personalVaultFactory.waitForDeployment();
+      const factoryAddress = await personalVaultFactory.getAddress();
+      console.log(`PersonalVaultFactoryUniV3合约已部署到: ${factoryAddress}`);
+
+      // 赋值factory变量
+      factory = personalVaultFactory;
 
       // 创建金库
       console.log(
@@ -126,7 +133,7 @@ describe("PersonalVaultUpgradeableUniV2 - Swap与权限测试", function () {
       const vaultAddress = await factory.getVault(await user.getAddress());
       console.log("金库地址:", vaultAddress);
       vault = await ethers.getContractAt(
-        "PersonalVaultUpgradeableUniV2",
+        "PersonalVaultUpgradeableUniV3",
         vaultAddress
       );
     }
@@ -140,9 +147,9 @@ describe("PersonalVaultUpgradeableUniV2 - Swap与权限测试", function () {
     NATIVE_TOKEN_ADDRESS = await vault.NATIVE_TOKEN();
     console.log("NATIVE_TOKEN_ADDRESS:", NATIVE_TOKEN_ADDRESS);
 
-    // 从环境变量获取代币地址
-    TOKEN_B_ADDRESS = process.env.TOKEN_B_ADDRESS; // ankrFLOW
-    TOKEN_C_ADDRESS = process.env.TOKEN_C_ADDRESS; // TRUMP_COIN
+    // 从环境变量获取代币地址 (BSC测试网)
+    TOKEN_B_ADDRESS = process.env.TOKEN_B_ADDRESS || "0x7ef95a0FEE0Dd31b22626fA2e10Ee6A223F8a684"; // USDT on BSC Testnet
+    TOKEN_C_ADDRESS = process.env.TOKEN_C_ADDRESS || "0x78867BbEeF44f2326bF8DDd1941a4439382EF2A7"; // BUSD on BSC Testnet
 
     console.log("swapRouter:", swapRouter);
     console.log("wrappedNative:", wrappedNative);
@@ -203,26 +210,26 @@ describe("PersonalVaultUpgradeableUniV2 - Swap与权限测试", function () {
     }
   });
 
-  // 真实DEX测试;
-  describe("Real DEX tests on Flow network", function () {
-    const PUNCHSWAP_V2_FACTORY =
-      process.env.PUNCHSWAP_V2_FACTORY ||
-      "0x29372c22459a4e373851798bFd6808e71EA34A71";
+  // 真实DEX测试 - BSC PancakeSwap V3
+  describe("Real DEX tests on BSC network", function () {
+    const PANCAKESWAP_V3_FACTORY =
+      process.env.PANCAKESWAP_V3_FACTORY ||
+      "0x0BFbCF9fa4f9C56B0F40a671Ad40E0805A091865"; // PancakeSwap V3 Factory on BSC
 
     before(async function () {
-      // 只在Flow网络上运行这些测试
-      if (hre.network.name !== "flow") {
-        console.log("跳过真实DEX测试，因为不是在Flow网络上运行");
+      // 只在BSC网络上运行这些测试
+      if (hre.network.name !== "bsc" && hre.network.name !== "bscTestnet") {
+        console.log("跳过真实DEX测试，因为不是在BSC网络上运行");
         this.skip();
         return;
       }
 
-      // 获取PunchSwap V2 Factory合约
+      // 获取PancakeSwap V3 Factory合约
       const factoryAbi = [
-        "function getPair(address tokenA, address tokenB) external view returns (address pair)",
+        "function getPool(address tokenA, address tokenB, uint24 fee) external view returns (address pool)",
       ];
       factoryContract = new ethers.Contract(
-        PUNCHSWAP_V2_FACTORY,
+        PANCAKESWAP_V3_FACTORY,
         factoryAbi,
         ethers.provider
       );
@@ -233,30 +240,31 @@ describe("PersonalVaultUpgradeableUniV2 - Swap与权限测试", function () {
         to: await vault.getAddress(),
         value: depositAmount,
       });
-      console.log(`存入 ${ethers.formatEther(depositAmount)} FLOW 到金库`);
+      console.log(`存入 ${ethers.formatEther(depositAmount)} BNB 到金库`);
     });
 
-    it("Should verify WFLOW-ankrFLOW trading pair exists", async function () {
-      // 检查WFLOW-ankrFLOW交易对是否存在
-      const pair = await factoryContract.getPair(
+    it("Should verify WBNB-USDT trading pool exists", async function () {
+      // 检查WBNB-USDT交易池是否存在 (0.25% fee tier)
+      const pool = await factoryContract.getPool(
         wrappedNative,
-        TOKEN_B_ADDRESS
+        TOKEN_B_ADDRESS,
+        2500 // 0.25% fee tier
       );
-      console.log(`WFLOW-ankrFLOW 交易对地址: ${pair}`);
-      expect(pair).to.not.equal(ZeroAddress);
+      console.log(`WBNB-USDT 交易池地址: ${pool}`);
+      expect(pool).to.not.equal(ZeroAddress);
     });
 
-    it("Should swap Native -> Token (FLOW -> ankrFLOW)", async function () {
+    it("Should swap Native -> Token (BNB -> USDT)", async function () {
       // 检查金库中的原生代币余额
       const nativeBalance = await vault.getBalance(NATIVE_TOKEN_ADDRESS);
-      console.log(`金库中的FLOW余额: ${ethers.formatEther(nativeBalance)}`);
+      console.log(`金库中的BNB余额: ${ethers.formatEther(nativeBalance)}`);
       expect(nativeBalance).to.be.gt(0);
 
       // 检查目标代币的初始余额
       const initialTokenBBalance = await vault.getBalance(TOKEN_B_ADDRESS);
       console.log(
-        `交换前金库中的ankrFLOW余额: ${ethers.formatEther(
-          initialTokenBBalance
+        `交换前金库中的USDT余额: ${ethers.formatUnits(
+          initialTokenBBalance, 18
         )}`
       );
 
@@ -298,7 +306,7 @@ describe("PersonalVaultUpgradeableUniV2 - Swap与权限测试", function () {
       const swapAmount = ethers.parseEther("0.01");
       try {
         console.log(
-          `尝试交换 ${ethers.formatEther(swapAmount)} FLOW -> ankrFLOW`
+          `尝试交换 ${ethers.formatEther(swapAmount)} BNB -> USDT`
         );
         // 使用直接的bot对象，不通过connect方法
         const botSigner = bot;
@@ -318,11 +326,11 @@ describe("PersonalVaultUpgradeableUniV2 - Swap与权限测试", function () {
         const finalTokenBBalance = await vault.getBalance(TOKEN_B_ADDRESS);
 
         console.log(
-          `交换后金库中的FLOW余额: ${ethers.formatEther(finalNativeBalance)}`
+          `交换后金库中的BNB余额: ${ethers.formatEther(finalNativeBalance)}`
         );
         console.log(
-          `交换后金库中的ankrFLOW余额: ${ethers.formatEther(
-            finalTokenBBalance
+          `交换后金库中的USDT余额: ${ethers.formatUnits(
+            finalTokenBBalance, 18
           )}`
         );
 
@@ -330,35 +338,35 @@ describe("PersonalVaultUpgradeableUniV2 - Swap与权限测试", function () {
         expect(finalNativeBalance).to.be.lt(nativeBalance);
         expect(finalTokenBBalance).to.be.gt(initialTokenBBalance);
       } catch (error) {
-        console.log(`FLOW -> ankrFLOW 交换失败: ${error.message}`);
+        console.log(`BNB -> USDT 交换失败: ${error.message}`);
         throw error;
       }
     });
 
-    it("Should swap Token -> Native (ankrFLOW -> FLOW)", async function () {
-      // 检查金库中的ankrFLOW余额
+    it("Should swap Token -> Native (USDT -> BNB)", async function () {
+      // 检查金库中的USDT余额
       const tokenBalance = await vault.getBalance(TOKEN_B_ADDRESS);
-      console.log(`金库中的ankrFLOW余额: ${ethers.formatEther(tokenBalance)}`);
+      console.log(`金库中的USDT余额: ${ethers.formatUnits(tokenBalance, 18)}`);
       expect(tokenBalance).to.be.gt(0);
 
       // 检查原生代币的初始余额
       const initialNativeBalance = await vault.getBalance(NATIVE_TOKEN_ADDRESS);
       console.log(
-        `交换前金库中的FLOW余额: ${ethers.formatEther(initialNativeBalance)}`
+        `交换前金库中的BNB余额: ${ethers.formatEther(initialNativeBalance)}`
       );
 
-      // 如果没有ankrFLOW余额，跳过测试
+      // 如果没有USDT余额，跳过测试
       if (tokenBalance == 0) {
-        console.log("金库中没有ankrFLOW余额，跳过此测试");
+        console.log("金库中没有USDT余额，跳过此测试");
         this.skip();
         return;
       }
 
-      // 执行交换，使用小部分ankrFLOW余额
+      // 执行交换，使用小部分USDT余额
       const swapAmount = tokenBalance / 10n; // 只使用10%的余额
       try {
         console.log(
-          `尝试交换 ${ethers.formatEther(swapAmount)} ankrFLOW -> FLOW`
+          `尝试交换 ${ethers.formatUnits(swapAmount, 18)} USDT -> BNB`
         );
         const tx = await vault.connect(bot).swapExactInputSingle(
           TOKEN_B_ADDRESS,
@@ -375,17 +383,17 @@ describe("PersonalVaultUpgradeableUniV2 - Swap与权限测试", function () {
         const finalNativeBalance = await vault.getBalance(NATIVE_TOKEN_ADDRESS);
 
         console.log(
-          `交换后金库中的ankrFLOW余额: ${ethers.formatEther(finalTokenBalance)}`
+          `交换后金库中的USDT余额: ${ethers.formatUnits(finalTokenBalance, 18)}`
         );
         console.log(
-          `交换后金库中的FLOW余额: ${ethers.formatEther(finalNativeBalance)}`
+          `交换后金库中的BNB余额: ${ethers.formatEther(finalNativeBalance)}`
         );
 
         // 验证交换结果
         expect(finalTokenBalance).to.be.lt(tokenBalance);
         expect(finalNativeBalance).to.be.gt(initialNativeBalance);
       } catch (error) {
-        console.log(`ankrFLOW -> FLOW 交换失败: ${error.message}`);
+        console.log(`USDT -> BNB 交换失败: ${error.message}`);
         // 如果是resolveName错误，跳过测试
         if (error.message.includes("resolveName")) {
           console.log("跳过此测试，因为resolveName方法未实现");
@@ -396,92 +404,95 @@ describe("PersonalVaultUpgradeableUniV2 - Swap与权限测试", function () {
       }
     });
 
-    it("Should swap Token -> Token (ankrFLOW -> TRUMP_COIN)", async function () {
-      // 首先检查ankrFLOW-TRUMP_COIN直接交易对是否存在
-      console.log("=== 交易对检查 ===");
-      const directPair = await factoryContract.getPair(
+    it("Should swap Token -> Token (USDT -> BUSD)", async function () {
+      // 首先检查USDT-BUSD直接交易池是否存在
+      console.log("=== 交易池检查 ===");
+      const directPool = await factoryContract.getPool(
         TOKEN_B_ADDRESS,
-        TOKEN_C_ADDRESS
+        TOKEN_C_ADDRESS,
+        500 // 0.05% fee tier
       );
-      console.log(`ankrFLOW-TRUMP_COIN 直接交易对地址: ${directPair}`);
+      console.log(`USDT-BUSD 直接交易池地址: ${directPool}`);
 
-      // 检查通过WFLOW的路由是否存在
-      const ankrFlowWflowPair = await factoryContract.getPair(
+      // 检查通过WBNB的路由是否存在
+      const usdtWbnbPool = await factoryContract.getPool(
         TOKEN_B_ADDRESS,
-        wrappedNative
-      );
-      const wflowTrumpPair = await factoryContract.getPair(
         wrappedNative,
-        TOKEN_C_ADDRESS
+        2500 // 0.25% fee tier
       );
-      console.log(`ankrFLOW-WFLOW 交易对地址: ${ankrFlowWflowPair}`);
-      console.log(`WFLOW-TRUMP_COIN 交易对地址: ${wflowTrumpPair}`);
+      const wbnbBusdPool = await factoryContract.getPool(
+        wrappedNative,
+        TOKEN_C_ADDRESS,
+        2500 // 0.25% fee tier
+      );
+      console.log(`USDT-WBNB 交易池地址: ${usdtWbnbPool}`);
+      console.log(`WBNB-BUSD 交易池地址: ${wbnbBusdPool}`);
 
       if (
-        directPair === ZeroAddress &&
-        (ankrFlowWflowPair === ZeroAddress || wflowTrumpPair === ZeroAddress)
+        directPool === ZeroAddress &&
+        (usdtWbnbPool === ZeroAddress || wbnbBusdPool === ZeroAddress)
       ) {
         console.log("没有找到可用的交易路径，跳过此测试");
         this.skip();
         return;
       }
 
-      console.log("=== 交易对检查完成 ===");
+      console.log("=== 交易池检查完成 ===");
 
-      // 检查金库中的ankrFLOW余额
-      let ankrFlowBalance = await vault.getBalance(TOKEN_B_ADDRESS);
+      // 检查金库中的USDT余额
+      let usdtBalance = await vault.getBalance(TOKEN_B_ADDRESS);
       console.log(
-        `金库中的ankrFLOW余额: ${ethers.formatEther(ankrFlowBalance)}`
+        `金库中的USDT余额: ${ethers.formatUnits(usdtBalance, 18)}`
       );
 
-      if (ankrFlowBalance === 0n) {
-        console.log("金库中没有ankrFLOW余额，先用FLOW购买一些ankrFLOW");
+      if (usdtBalance === 0n) {
+        console.log("金库中没有USDT余额，先用BNB购买一些USDT");
 
-        // 用一部分FLOW购买ankrFLOW
-        const flowToSwap = ethers.parseEther("0.005"); // 用0.005 FLOW购买ankrFLOW
+        // 用一部分BNB购买USDT
+        const bnbToSwap = ethers.parseEther("0.005"); // 用0.005 BNB购买USDT
 
         try {
           const swapTx = await vault.connect(bot).swapExactInputSingle(
             NATIVE_TOKEN_ADDRESS,
             TOKEN_B_ADDRESS,
-            flowToSwap,
+            bnbToSwap,
             0, // 接受任何数量的输出
             await admin.getAddress(), // feeRecipient
             100 // feeRate 1/10000
           );
           await swapTx.wait();
-          console.log("成功用FLOW购买ankrFLOW");
+          console.log("成功用BNB购买USDT");
 
-          // 重新检查ankrFLOW余额
-          ankrFlowBalance = await vault.getBalance(TOKEN_B_ADDRESS);
+          // 重新检查USDT余额
+          usdtBalance = await vault.getBalance(TOKEN_B_ADDRESS);
           console.log(
-            `购买后的ankrFLOW余额: ${ethers.formatEther(ankrFlowBalance)}`
+            `购买后的USDT余额: ${ethers.formatUnits(usdtBalance, 18)}`
           );
 
-          if (ankrFlowBalance === 0n) {
-            console.log("购买ankrFLOW失败，跳过此测试");
+          if (usdtBalance === 0n) {
+            console.log("购买USDT失败，跳过此测试");
             this.skip();
             return;
           }
         } catch (error) {
-          console.log(`购买ankrFLOW失败: ${error.message}`);
+          console.log(`购买USDT失败: ${error.message}`);
           this.skip();
           return;
         }
       }
 
-      // 检查交换前金库中的TRUMP_COIN余额
-      const trumpCoinBalanceBefore = await vault.getBalance(TOKEN_C_ADDRESS);
+      // 检查交换前金库中的BUSD余额
+      const busdBalanceBefore = await vault.getBalance(TOKEN_C_ADDRESS);
       console.log(
-        `交换前金库中的TRUMP_COIN余额: ${ethers.formatEther(
-          trumpCoinBalanceBefore
+        `交换前金库中的BUSD余额: ${ethers.formatUnits(
+          busdBalanceBefore, 18
         )}`
       );
 
-      // 使用10%的ankrFLOW余额进行交换
-      const swapAmount = ankrFlowBalance / 10n;
+      // 使用10%的USDT余额进行交换
+      const swapAmount = usdtBalance / 10n;
       console.log(
-        `尝试交换 ${ethers.formatEther(swapAmount)} ankrFLOW -> TRUMP_COIN`
+        `尝试交换 ${ethers.formatUnits(swapAmount, 18)} USDT -> BUSD`
       );
 
       try {
@@ -497,26 +508,26 @@ describe("PersonalVaultUpgradeableUniV2 - Swap与权限测试", function () {
         await tx.wait();
 
         // 检查交换后的余额
-        const ankrFlowBalanceAfter = await vault.getBalance(TOKEN_B_ADDRESS);
-        const trumpCoinBalanceAfter = await vault.getBalance(TOKEN_C_ADDRESS);
+        const usdtBalanceAfter = await vault.getBalance(TOKEN_B_ADDRESS);
+        const busdBalanceAfter = await vault.getBalance(TOKEN_C_ADDRESS);
 
         console.log(
-          `交换后金库中的ankrFLOW余额: ${ethers.formatEther(
-            ankrFlowBalanceAfter
+          `交换后金库中的USDT余额: ${ethers.formatUnits(
+            usdtBalanceAfter, 18
           )}`
         );
         console.log(
-          `交换后金库中的TRUMP_COIN余额: ${ethers.formatEther(
-            trumpCoinBalanceAfter
+          `交换后金库中的BUSD余额: ${ethers.formatUnits(
+            busdBalanceAfter, 18
           )}`
         );
 
-        // 验证ankrFLOW余额减少
-        expect(ankrFlowBalanceAfter).to.be.below(ankrFlowBalance);
-        // 验证TRUMP_COIN余额增加
-        expect(trumpCoinBalanceAfter).to.be.above(trumpCoinBalanceBefore);
+        // 验证USDT余额减少
+        expect(usdtBalanceAfter).to.be.below(usdtBalance);
+        // 验证BUSD余额增加
+        expect(busdBalanceAfter).to.be.above(busdBalanceBefore);
       } catch (error) {
-        console.log(`ankrFLOW -> TRUMP_COIN 交换失败: ${error.message}`);
+        console.log(`USDT -> BUSD 交换失败: ${error.message}`);
         throw error;
       }
     });
