@@ -9,3 +9,5 @@
 node_modules/
 dist/
 build/
+
+/solana/PersonalVault/target
