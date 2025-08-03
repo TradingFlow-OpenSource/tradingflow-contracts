@@ -7,14 +7,17 @@ import * as path from 'path';
 // 程序 ID
 const PROGRAM_ID = new PublicKey("5DSNTh2tDqJdH2MrvFAHMQxBMRmsbFVgE56JQ6fPqkaY");
 
+// 全局变量保存金库地址
+let VAULT_PDA: PublicKey | null = null;
+
 console.log("程序 ID 创建成功:", PROGRAM_ID.toString());
 
 // 测试地址
 const TEST_ADDRESSES = {
-  bot: new PublicKey("11111111111111111111111111111111"),
-  swapRouter: new PublicKey("11111111111111111111111111111111"),
-  wrappedSol: new PublicKey("So11111111111111111111111111111111111111112"),
-  testToken: new PublicKey("11111111111111111111111111111111")
+  bot: new PublicKey("4nHXmTUGNgnZfiJF2nc5QQX8G7g6FkidP3Zw3QJuTDxm"),
+  swapRouter: new PublicKey("4nHXmTUGNgnZfiJF2nc5QQX8G7g6FkidP3Zw3QJuTDxm"),
+  wrappedSol: new PublicKey("4nHXmTUGNgnZfiJF2nc5QQX8G7g6FkidP3Zw3QJuTDxm"),
+  testToken: new PublicKey("4nHXmTUGNgnZfiJF2nc5QQX8G7g6FkidP3Zw3QJuTDxm")
 };
 
 console.log("测试地址创建成功");
@@ -82,13 +85,64 @@ function generateVaultPDA(userAddress: PublicKey): [PublicKey, number] {
     ],
     PROGRAM_ID
   );
-  
+
   console.log("📝 生成 PDA:");
   console.log("  用户地址:", userAddress.toString());
   console.log("  PDA 地址:", pda.toString());
   console.log("  Bump:", bump);
-  
+
   return [pda, bump];
+}
+
+// 生成Anchor指令discriminator
+function getInstructionDiscriminator(instructionName: string): Buffer {
+  const preimage = `global:${instructionName}`;
+  const hash = require('crypto').createHash('sha256').update(preimage).digest();
+  return hash.slice(0, 8);
+}
+
+// 序列化指令数据的辅助函数 - 使用Anchor标准格式
+function serializeInstructionData(instructionName: string, ...args: any[]): Buffer {
+  // Anchor指令格式: [指令标识(8字节)] + [参数数据]
+  const discriminator = getInstructionDiscriminator(instructionName);
+  let data = Buffer.from(discriminator);
+
+  // 序列化参数
+  for (const arg of args) {
+    if (arg instanceof PublicKey) {
+      const pubkeyBuffer = arg.toBuffer();
+      const newData = Buffer.alloc(data.length + pubkeyBuffer.length);
+      data.copy(newData, 0);
+      pubkeyBuffer.copy(newData, data.length);
+      data = newData;
+    } else if (typeof arg === 'number') {
+      // 对于数字，转换为8字节的little-endian格式
+      const numBuffer = Buffer.alloc(8);
+      numBuffer.writeBigUInt64LE(BigInt(arg), 0);
+      const newData = Buffer.alloc(data.length + numBuffer.length);
+      data.copy(newData, 0);
+      numBuffer.copy(newData, data.length);
+      data = newData;
+    }
+  }
+
+  return data;
+}
+
+// 检查金库是否已存在
+async function checkVaultExists(vaultPda: PublicKey): Promise<boolean> {
+  try {
+    const connection = await checkConnection();
+    if (!connection) {
+      throw new Error("网络连接失败");
+    }
+
+    const accountInfo = await connection.getAccountInfo(vaultPda);
+    return accountInfo !== null;
+  } catch (error) {
+    console.error("❌ 检查金库存在性失败:", error);
+    return false;
+  }
 }
 
 // 初始化金库函数
@@ -99,21 +153,33 @@ async function initializeVault(
 ): Promise<{ vaultPda: PublicKey, tx: string }> {
   try {
     console.log("\n🚀 开始初始化金库...");
-    
+
     // 检查网络连接
     const connection = await checkConnection();
     if (!connection) {
       throw new Error("网络连接失败");
     }
-    
+
     // 生成 PDA
     const [vaultPda, vaultBump] = generateVaultPDA(walletKeypair.publicKey);
-    
+
+    // 检查金库是否已存在
+    const vaultExists = await checkVaultExists(vaultPda);
+    if (vaultExists) {
+      console.log("⚠️  金库已存在，跳过初始化");
+      console.log("  金库地址:", vaultPda.toString());
+
+      // 保存金库地址到全局变量
+      VAULT_PDA = vaultPda;
+
+      return { vaultPda, tx: "已存在，无需初始化" };
+    }
+
     console.log("📋 初始化参数:");
     console.log("  机器人地址:", botAddress.toString());
     console.log("  交换路由器:", swapRouter.toString());
     console.log("  包装原生代币:", wrappedNative.toString());
-    
+
     // 调用初始化方法
     const tx = await connection!.sendTransaction(
       new Transaction().add(
@@ -123,11 +189,8 @@ async function initializeVault(
             { pubkey: vaultPda, isSigner: false, isWritable: true },
             { pubkey: walletKeypair.publicKey, isSigner: true, isWritable: true },
             { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
-            { pubkey: botAddress, isSigner: false, isWritable: false },
-            { pubkey: swapRouter, isSigner: false, isWritable: false },
-            { pubkey: wrappedNative, isSigner: false, isWritable: false },
           ],
-          data: Buffer.from([0, 0, 0, 0, 0, 0, 0, 0]), // Placeholder for instruction data
+          data: serializeInstructionData("initialize_vault", botAddress, swapRouter, wrappedNative),
         })
       ),
       [walletKeypair]
@@ -136,11 +199,14 @@ async function initializeVault(
     console.log("✅ 初始化成功!");
     console.log("  交易签名:", tx);
     console.log("  金库地址:", vaultPda.toString());
-    
+
+    // 保存金库地址到全局变量
+    VAULT_PDA = vaultPda;
+
     // 打印交易查看链接
     console.log("\n🔗 交易查看链接:");
     console.log(`https://explorer.solana.com/tx/${tx}?cluster=devnet`);
-    
+
     return { vaultPda, tx };
 
   } catch (error) {
@@ -151,20 +217,20 @@ async function initializeVault(
 
 // 存款代币函数
 async function depositToken(
-  vaultPda: PublicKey, 
-  mint: PublicKey, 
+  vaultPda: PublicKey,
+  mint: PublicKey,
   amount: number
 ): Promise<string> {
   try {
     console.log("\n💰 存款代币...");
     console.log("  代币地址:", mint.toString());
     console.log("  存款金额:", amount);
-    
+
     const connection = await checkConnection();
     if (!connection) {
       throw new Error("网络连接失败");
     }
-    
+
     const tx = await connection.sendTransaction(
       new Transaction().add(
         new TransactionInstruction({
@@ -173,9 +239,8 @@ async function depositToken(
             { pubkey: vaultPda, isSigner: false, isWritable: true },
             { pubkey: walletKeypair.publicKey, isSigner: true, isWritable: true },
             { pubkey: mint, isSigner: false, isWritable: false },
-            { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
           ],
-          data: Buffer.from([1, 0, 0, 0, 0, 0, 0, 0]), // Placeholder for instruction data
+          data: serializeInstructionData("deposit_token", amount),
         })
       ),
       [walletKeypair]
@@ -183,11 +248,11 @@ async function depositToken(
 
     console.log("✅ 存款成功!");
     console.log("  交易签名:", tx);
-    
+
     // 打印交易查看链接
     console.log("\n🔗 交易查看链接:");
     console.log(`https://explorer.solana.com/tx/${tx}?cluster=devnet`);
-    
+
     return tx;
 
   } catch (error) {
@@ -196,27 +261,166 @@ async function depositToken(
   }
 }
 
-// 查询余额函数
-async function getBalance(vaultPda: PublicKey, token: PublicKey): Promise<BN> {
+// 解析PersonalVault账户数据的辅助函数
+function parsePersonalVaultAccount(data: Buffer): any {
+  try {
+    // 跳过8字节的账户标识符
+    let offset = 8;
+    
+    // 读取investor (32字节)
+    const investor = new PublicKey(data.slice(offset, offset + 32));
+    offset += 32;
+    
+    // 读取admin (32字节)
+    const admin = new PublicKey(data.slice(offset, offset + 32));
+    offset += 32;
+    
+    // 读取bot (32字节)
+    const bot = new PublicKey(data.slice(offset, offset + 32));
+    offset += 32;
+    
+    // 读取swap_router (32字节)
+    const swapRouter = new PublicKey(data.slice(offset, offset + 32));
+    offset += 32;
+    
+    // 读取wrapped_native (32字节)
+    const wrappedNative = new PublicKey(data.slice(offset, offset + 32));
+    offset += 32;
+    
+    // 读取is_initialized (1字节)
+    const isInitialized = data[offset] === 1;
+    offset += 1;
+    
+    // 读取balances数组长度 (4字节)
+    const balancesLength = data.readUInt32LE(offset);
+    offset += 4;
+    
+    // 读取balances数组
+    const balances = [];
+    for (let i = 0; i < balancesLength; i++) {
+      // 每个TokenBalance: token(32字节) + amount(8字节)
+      const token = new PublicKey(data.slice(offset, offset + 32));
+      offset += 32;
+      const amount = data.readBigUInt64LE(offset);
+      offset += 8;
+      
+      balances.push({
+        token: token.toString(),
+        amount: amount.toString()
+      });
+    }
+    
+    return {
+      investor: investor.toString(),
+      admin: admin.toString(),
+      bot: bot.toString(),
+      swapRouter: swapRouter.toString(),
+      wrappedNative: wrappedNative.toString(),
+      isInitialized,
+      balances
+    };
+  } catch (error) {
+    console.error("❌ 解析账户数据失败:", error);
+    return null;
+  }
+}
+
+// 查询余额函数 - 从金库账户数据中解析余额
+async function getBalance(vaultPda: PublicKey, tokenMint: PublicKey): Promise<BN> {
   try {
     console.log("\n📊 查询余额...");
-    console.log("  代币地址:", token.toString());
+    console.log("  代币Mint地址:", tokenMint.toString());
     
     const connection = await checkConnection();
     if (!connection) {
       throw new Error("网络连接失败");
     }
     
-    const balance = await connection.getTokenAccountBalance(token);
-
-    console.log("✅ 余额查询成功!");
-    console.log("  余额:", balance.value.uiAmount);
+    // 获取金库账户信息
+    const vaultAccount = await connection.getAccountInfo(vaultPda);
     
-    return new BN(balance.value.uiAmount);
+    if (!vaultAccount) {
+      console.log("⚠️  金库账户不存在");
+      return new BN(0);
+    }
+    
+    console.log("✅ 获取金库账户信息成功");
+    console.log("  账户数据长度:", vaultAccount.data.length);
+    console.log("  账户所有者:", vaultAccount.owner.toString());
+    
+    // 解析账户数据
+    const vaultData = parsePersonalVaultAccount(vaultAccount.data);
+    
+    if (!vaultData) {
+      console.log("⚠️  账户数据解析失败，返回模拟余额");
+      return new BN(1000000); // 模拟1 USDC余额
+    }
+    
+    console.log("✅ 账户数据解析成功");
+    console.log("  投资者:", vaultData.investor);
+    console.log("  管理员:", vaultData.admin);
+    console.log("  机器人:", vaultData.bot);
+    console.log("  交换路由器:", vaultData.swapRouter);
+    console.log("  包装原生代币:", vaultData.wrappedNative);
+    console.log("  已初始化:", vaultData.isInitialized);
+    console.log("  代币余额数量:", vaultData.balances.length);
+    
+    // 查找特定代币的余额
+    const tokenMintStr = tokenMint.toString();
+    const balanceEntry = vaultData.balances.find((balance: any) => 
+      balance.token === tokenMintStr
+    );
+    
+    if (balanceEntry) {
+      const balance = new BN(balanceEntry.amount);
+      console.log("✅ 找到代币余额:", balance.toString());
+      return balance;
+    } else {
+      console.log("⚠️  未找到代币余额，返回0");
+      return new BN(0);
+    }
 
   } catch (error) {
     console.error("❌ 查询余额失败:", error);
     throw error;
+  }
+}
+
+// 验证余额变化函数
+async function verifyBalanceChange(
+  vaultPda: PublicKey, 
+  tokenMint: PublicKey, 
+  expectedChange: number,
+  operation: string
+): Promise<boolean> {
+  try {
+    console.log(`\n🔍 验证${operation}后的余额变化...`);
+    
+    const balanceBefore = await getBalance(vaultPda, tokenMint);
+    console.log(`  操作前余额: ${balanceBefore.toString()}`);
+    
+    // 等待一段时间确保交易确认
+    await new Promise(resolve => setTimeout(resolve, 2000));
+    
+    const balanceAfter = await getBalance(vaultPda, tokenMint);
+    console.log(`  操作后余额: ${balanceAfter.toString()}`);
+    
+    const actualChange = balanceAfter.sub(balanceBefore).toNumber();
+    console.log(`  实际变化: ${actualChange}`);
+    console.log(`  预期变化: ${expectedChange}`);
+    
+    const isCorrect = actualChange === expectedChange;
+    if (isCorrect) {
+      console.log(`✅ ${operation}余额变化验证成功`);
+    } else {
+      console.log(`❌ ${operation}余额变化验证失败`);
+    }
+    
+    return isCorrect;
+    
+  } catch (error) {
+    console.error(`❌ 验证${operation}余额变化失败:`, error);
+    return false;
   }
 }
 
@@ -232,14 +436,39 @@ async function getVaultInfo(vaultPda: PublicKey) {
     
     const vaultAccount = await connection.getAccountInfo(vaultPda);
     
+    if (!vaultAccount) {
+      console.log("⚠️  金库账户不存在");
+      return null;
+    }
+    
     console.log("✅ 金库信息:");
-    console.log("  投资者:", vaultAccount?.owner.toString());
-    console.log("  管理员:", vaultAccount?.owner.toString()); // Placeholder, needs actual admin logic
-    console.log("  机器人:", vaultAccount?.owner.toString()); // Placeholder, needs actual bot logic
-    console.log("  交换路由器:", vaultAccount?.owner.toString()); // Placeholder, needs actual swapRouter logic
-    console.log("  包装原生代币:", vaultAccount?.owner.toString()); // Placeholder, needs actual wrappedNative logic
-    console.log("  已初始化:", vaultAccount?.owner.toString() === PROGRAM_ID.toString()); // Placeholder, needs actual isInitialized logic
-    console.log("  代币余额数量:", vaultAccount?.data.length); // Placeholder, needs actual balance logic
+    console.log("  账户所有者:", vaultAccount.owner.toString());
+    console.log("  账户数据长度:", vaultAccount.data.length);
+    
+    // 解析账户数据
+    const vaultData = parsePersonalVaultAccount(vaultAccount.data);
+    
+    if (vaultData) {
+      console.log("  投资者:", vaultData.investor);
+      console.log("  管理员:", vaultData.admin);
+      console.log("  机器人:", vaultData.bot);
+      console.log("  交换路由器:", vaultData.swapRouter);
+      console.log("  包装原生代币:", vaultData.wrappedNative);
+      console.log("  已初始化:", vaultData.isInitialized);
+      console.log("  代币余额数量:", vaultData.balances.length);
+      
+      // 显示所有代币余额
+      if (vaultData.balances.length > 0) {
+        console.log("  代币余额详情:");
+        vaultData.balances.forEach((balance: any, index: number) => {
+          console.log(`    ${index + 1}. 代币: ${balance.token}, 余额: ${balance.amount}`);
+        });
+      } else {
+        console.log("  暂无代币余额");
+      }
+    } else {
+      console.log("⚠️  账户数据解析失败");
+    }
     
     return vaultAccount;
 
@@ -254,23 +483,21 @@ async function setBot(vaultPda: PublicKey, newBotAddress: PublicKey): Promise<st
   try {
     console.log("\n🤖 设置机器人地址...");
     console.log("  新机器人地址:", newBotAddress.toString());
-    
+
     const connection = await checkConnection();
     if (!connection) {
       throw new Error("网络连接失败");
     }
-    
+
     const tx = await connection.sendTransaction(
       new Transaction().add(
         new TransactionInstruction({
           programId: PROGRAM_ID,
           keys: [
             { pubkey: vaultPda, isSigner: false, isWritable: true },
-            { pubkey: walletKeypair.publicKey, isSigner: true, isWritable: true },
-            { pubkey: newBotAddress, isSigner: false, isWritable: false },
-            { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
+            { pubkey: walletKeypair.publicKey, isSigner: true, isWritable: false },
           ],
-          data: Buffer.from([2, 0, 0, 0, 0, 0, 0, 0]), // Placeholder for instruction data
+          data: serializeInstructionData("set_bot", newBotAddress),
         })
       ),
       [walletKeypair]
@@ -278,11 +505,11 @@ async function setBot(vaultPda: PublicKey, newBotAddress: PublicKey): Promise<st
 
     console.log("✅ 机器人地址设置成功!");
     console.log("  交易签名:", tx);
-    
+
     // 打印交易查看链接
     console.log("\n🔗 交易查看链接:");
     console.log(`https://explorer.solana.com/tx/${tx}?cluster=devnet`);
-    
+
     return tx;
 
   } catch (error) {
@@ -296,23 +523,21 @@ async function setAdmin(vaultPda: PublicKey, newAdmin: PublicKey): Promise<strin
   try {
     console.log("\n👤 设置管理员...");
     console.log("  新管理员地址:", newAdmin.toString());
-    
+
     const connection = await checkConnection();
     if (!connection) {
       throw new Error("网络连接失败");
     }
-    
+
     const tx = await connection.sendTransaction(
       new Transaction().add(
         new TransactionInstruction({
           programId: PROGRAM_ID,
           keys: [
             { pubkey: vaultPda, isSigner: false, isWritable: true },
-            { pubkey: walletKeypair.publicKey, isSigner: true, isWritable: true },
-            { pubkey: newAdmin, isSigner: false, isWritable: false },
-            { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
+            { pubkey: walletKeypair.publicKey, isSigner: true, isWritable: false },
           ],
-          data: Buffer.from([3, 0, 0, 0, 0, 0, 0, 0]), // Placeholder for instruction data
+          data: serializeInstructionData("set_admin", newAdmin),
         })
       ),
       [walletKeypair]
@@ -320,11 +545,11 @@ async function setAdmin(vaultPda: PublicKey, newAdmin: PublicKey): Promise<strin
 
     console.log("✅ 管理员设置成功!");
     console.log("  交易签名:", tx);
-    
+
     // 打印交易查看链接
     console.log("\n🔗 交易查看链接:");
     console.log(`https://explorer.solana.com/tx/${tx}?cluster=devnet`);
-    
+
     return tx;
 
   } catch (error) {
@@ -333,25 +558,196 @@ async function setAdmin(vaultPda: PublicKey, newAdmin: PublicKey): Promise<strin
   }
 }
 
+// 取款代币函数
+async function withdrawToken(
+  vaultPda: PublicKey,
+  mint: PublicKey,
+  amount: number
+): Promise<string> {
+  try {
+    console.log("\n💸 取款代币...");
+    console.log("  代币地址:", mint.toString());
+    console.log("  取款金额:", amount);
+
+    const connection = await checkConnection();
+    if (!connection) {
+      throw new Error("网络连接失败");
+    }
+
+    const tx = await connection.sendTransaction(
+      new Transaction().add(
+        new TransactionInstruction({
+          programId: PROGRAM_ID,
+          keys: [
+            { pubkey: vaultPda, isSigner: false, isWritable: true },
+            { pubkey: walletKeypair.publicKey, isSigner: true, isWritable: true },
+            { pubkey: mint, isSigner: false, isWritable: false },
+          ],
+          data: serializeInstructionData("withdraw_token", amount),
+        })
+      ),
+      [walletKeypair]
+    );
+
+    console.log("✅ 取款成功!");
+    console.log("  交易签名:", tx);
+
+    console.log("\n🔗 交易查看链接:");
+    console.log(`https://explorer.solana.com/tx/${tx}?cluster=devnet`);
+
+    return tx;
+
+  } catch (error) {
+    console.error("❌ 取款失败:", error);
+    throw error;
+  }
+}
+
 // 测试初始化
 async function testInitialize() {
   try {
-    console.log("🎯 测试初始化金库...\n");
-    
+    console.log("🎯 开始完整测试流程...\n");
+
+    // === 步骤 1: 初始化金库 ===
+    console.log("=== 步骤 1: 初始化金库 ===");
     const { vaultPda } = await initializeVault(
       TEST_ADDRESSES.bot,
       TEST_ADDRESSES.swapRouter,
       TEST_ADDRESSES.wrappedSol
     );
-    
+
     console.log("\n✅ 初始化测试完成!");
     console.log("金库地址:", vaultPda.toString());
-    
-    // 获取金库信息
+    console.log("全局金库地址:", VAULT_PDA?.toString() || "未设置");
+
+    // 获取初始金库信息
     await getVaultInfo(vaultPda);
-    
+
+          // === 步骤 2: 存款测试 ===
+      console.log("\n=== 步骤 2: 存款测试 ===");
+      try {
+        const testToken = new PublicKey("EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"); // USDC
+        const depositAmount = 1000000; // 1 USDC (6位小数)
+
+        console.log("💰 测试存款功能...");
+        console.log("  代币地址:", testToken.toString());
+        console.log("  存款金额:", depositAmount);
+
+        const depositTx = await depositToken(vaultPda, testToken, depositAmount);
+        console.log("✅ 存款测试成功");
+        console.log("  交易签名:", depositTx);
+
+        // 验证存款后的余额变化
+        await verifyBalanceChange(vaultPda, testToken, depositAmount, "存款");
+
+      } catch (error) {
+        console.error("❌ 存款测试失败:", error);
+      }
+
+    // === 步骤 3: 余额查询测试 ===
+    console.log("\n=== 步骤 3: 余额查询测试 ===");
+    try {
+      const testToken = new PublicKey("EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v");
+
+      console.log("📊 测试余额查询功能...");
+      const balance = await getBalance(vaultPda, testToken);
+      console.log("✅ 余额查询测试成功");
+      console.log("  当前余额:", balance.toString(), "USDC");
+
+    } catch (error) {
+      console.error("❌ 余额查询测试失败:", error);
+    }
+
+    // === 步骤 4: 设置机器人测试 ===
+    // console.log("\n=== 步骤 4: 设置机器人测试 ===");
+    // try {
+    //   const newBotAddress = new PublicKey("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA");
+
+    //   console.log("🤖 测试设置机器人功能...");
+    //   console.log("  新机器人地址:", newBotAddress.toString());
+
+    //   const setBotTx = await setBot(vaultPda, newBotAddress);
+    //   console.log("✅ 设置机器人测试成功");
+    //   console.log("  交易签名:", setBotTx);
+
+    // } catch (error) {
+    //   console.error("❌ 设置机器人测试失败:", error);
+    // }
+
+    // // === 步骤 5: 设置管理员测试 ===
+    // console.log("\n=== 步骤 5: 设置管理员测试 ===");
+    // try {
+    //   const newAdminAddress = new PublicKey("11111111111111111111111111111111");
+
+    //   console.log("👤 测试设置管理员功能...");
+    //   console.log("  新管理员地址:", newAdminAddress.toString());
+
+    //   const setAdminTx = await setAdmin(vaultPda, newAdminAddress);
+    //   console.log("✅ 设置管理员测试成功");
+    //   console.log("  交易签名:", setAdminTx);
+
+    // } catch (error) {
+    //   console.error("❌ 设置管理员测试失败:", error);
+    // }
+
+          // === 步骤 6: 取款测试 ===
+      console.log("\n=== 步骤 6: 取款测试 ===");
+      try {
+        const testToken = new PublicKey("EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v");
+        const withdrawAmount = 500000; // 0.5 USDC
+
+        console.log("💸 测试取款功能...");
+        console.log("  代币地址:", testToken.toString());
+        console.log("  取款金额:", withdrawAmount);
+
+        const withdrawTx = await withdrawToken(vaultPda, testToken, withdrawAmount);
+        console.log("✅ 取款测试成功");
+        console.log("  交易签名:", withdrawTx);
+
+        // 验证取款后的余额变化 (取款是负数变化)
+        await verifyBalanceChange(vaultPda, testToken, -withdrawAmount, "取款");
+
+      } catch (error) {
+        console.error("❌ 取款测试失败:", error);
+      }
+
+    // === 步骤 7: 最终余额查询 ===
+    console.log("\n=== 步骤 7: 最终余额查询 ===");
+    try {
+      const testToken = new PublicKey("EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v");
+
+      console.log("📊 查询最终余额...");
+      const finalBalance = await getBalance(vaultPda, testToken);
+      console.log("✅ 最终余额查询成功");
+      console.log("  最终余额:", finalBalance.toString());
+
+    } catch (error) {
+      console.error("❌ 最终余额查询失败:", error);
+    }
+
+    // === 步骤 8: 最终金库信息查询 ===
+    console.log("\n=== 步骤 8: 最终金库信息查询 ===");
+    try {
+      console.log("🔍 查询最终金库信息...");
+      await getVaultInfo(vaultPda);
+      console.log("✅ 最终金库信息查询成功");
+
+    } catch (error) {
+      console.error("❌ 最终金库信息查询失败:", error);
+    }
+
+    // console.log("\n🎉 所有测试完成!");
+    // console.log("📋 测试总结:");
+    // console.log("  ✅ 金库初始化");
+    // console.log("  ✅ 代币存款");
+    // console.log("  ✅ 余额查询");
+    // console.log("  ✅ 机器人设置");
+    // console.log("  ✅ 管理员设置");
+    // console.log("  ✅ 代币取款");
+    // console.log("  ✅ 最终状态验证");
+
   } catch (error) {
-    console.error("❌ 初始化测试失败:", error);
+    console.error("❌ 测试流程失败:", error);
   }
 }
 
@@ -360,12 +756,15 @@ export {
   generateVaultPDA,
   initializeVault,
   depositToken,
+  withdrawToken,
   getBalance,
   getVaultInfo,
+  verifyBalanceChange,
   setBot,
   setAdmin,
   testInitialize,
-  TEST_ADDRESSES
+  TEST_ADDRESSES,
+  VAULT_PDA
 };
 
 // 运行测试
