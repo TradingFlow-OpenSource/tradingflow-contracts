@@ -30,27 +30,42 @@ pub struct PersonalVault {
 
 /// 内部函数：获取代币余额
 fn get_token_balance(vault: &PersonalVault, token: Pubkey) -> u64 {
-    for balance in &vault.balances {
+    msg!("查找代币余额，代币地址: {}", token);
+    msg!("当前金库中代币数量: {}", vault.balances.len());
+    
+    for (index, balance) in vault.balances.iter().enumerate() {
+        msg!("检查第{}个代币: {}", index + 1, balance.token);
         if balance.token == token {
+            msg!("找到代币，余额: {}", balance.amount);
             return balance.amount;
         }
     }
+    
+    msg!("未找到代币，返回0");
     0
 }
 
 /// 内部函数：设置代币余额
 fn set_token_balance(vault: &mut PersonalVault, token: Pubkey, amount: u64) {
-    for balance in &mut vault.balances {
+    msg!("设置代币余额，代币地址: {}, 新余额: {}", token, amount);
+    
+    for (index, balance) in vault.balances.iter_mut().enumerate() {
         if balance.token == token {
+            msg!("更新现有代币余额，索引: {}", index);
+            let old_amount = balance.amount;
             balance.amount = amount;
+            msg!("余额从 {} 更新为 {}", old_amount, amount);
             return;
         }
     }
+    
     // 如果代币不存在，添加新条目
+    msg!("代币不存在，添加新代币到余额列表");
     vault.balances.push(TokenBalance {
         token,
         amount,
     });
+    msg!("新代币已添加，当前代币总数: {}", vault.balances.len());
 }
 
 /// 个人金库程序
@@ -66,10 +81,18 @@ pub mod personal_vault {
         swap_router: Pubkey,      // DEX 路由器地址（如 Raydium、Orca）
         wrapped_native: Pubkey,   // 包装 SOL 代币地址
     ) -> Result<()> {
+        msg!("开始初始化个人金库...");
+        msg!("用户地址: {}", ctx.accounts.user.key());
+        msg!("机器人地址: {}", bot_address);
+        msg!("交换路由器: {}", swap_router);
+        msg!("包装原生代币: {}", wrapped_native);
+        
         // 验证参数
         require!(bot_address != Pubkey::default(), ErrorCode::InvalidBotAddress);
         require!(swap_router != Pubkey::default(), ErrorCode::InvalidSwapRouter);
         require!(wrapped_native != Pubkey::default(), ErrorCode::InvalidWrappedNative);
+
+        msg!("参数验证通过，设置金库数据...");
 
         let vault = &mut ctx.accounts.vault;
         
@@ -80,6 +103,9 @@ pub mod personal_vault {
         vault.swap_router = swap_router;
         vault.wrapped_native = wrapped_native;
         vault.is_initialized = true;
+
+        msg!("金库初始化完成!");
+        msg!("金库地址: {}", ctx.accounts.vault.key());
 
         emit!(VaultInitialized {
             user: ctx.accounts.user.key(),
@@ -96,15 +122,25 @@ pub mod personal_vault {
         ctx: Context<SetBot>,
         new_bot_address: Pubkey,
     ) -> Result<()> {
+        msg!("开始设置机器人地址...");
+        msg!("用户地址: {}", ctx.accounts.user.key());
+        msg!("新机器人地址: {}", new_bot_address);
+        
         require!(new_bot_address != Pubkey::default(), ErrorCode::InvalidBotAddress);
         
         let vault = &mut ctx.accounts.vault;
         let old_bot_address = vault.bot;
         
+        msg!("当前机器人地址: {}", old_bot_address);
+        
         require!(new_bot_address != old_bot_address, ErrorCode::SameBotAddress);
         require!(ctx.accounts.user.key() == vault.admin, ErrorCode::Unauthorized);
 
+        msg!("验证通过，更新机器人地址...");
+        
         vault.bot = new_bot_address;
+        
+        msg!("机器人地址更新完成!");
 
         emit!(BotUpdated {
             vault: ctx.accounts.vault.key(),
@@ -121,15 +157,25 @@ pub mod personal_vault {
         ctx: Context<SetAdmin>,
         new_admin: Pubkey,
     ) -> Result<()> {
+        msg!("开始设置管理员...");
+        msg!("用户地址: {}", ctx.accounts.user.key());
+        msg!("新管理员地址: {}", new_admin);
+        
         require!(new_admin != Pubkey::default(), ErrorCode::InvalidAdminAddress);
         
         let vault = &mut ctx.accounts.vault;
         let old_admin = vault.admin;
         
+        msg!("当前管理员地址: {}", old_admin);
+        
         require!(new_admin != old_admin, ErrorCode::SameAdminAddress);
         require!(ctx.accounts.user.key() == vault.admin, ErrorCode::Unauthorized);
 
+        msg!("验证通过，更新管理员地址...");
+        
         vault.admin = new_admin;
+        
+        msg!("管理员地址更新完成!");
 
         emit!(AdminUpdated {
             vault: ctx.accounts.vault.key(),
@@ -148,14 +194,25 @@ pub mod personal_vault {
     ) -> Result<()> {
         let vault = &mut ctx.accounts.vault;
         
+        msg!("开始存款操作...");
+        msg!("用户地址: {}", ctx.accounts.user.key());
+        msg!("代币地址: {}", ctx.accounts.mint.key());
+        msg!("存款金额: {}", amount);
+        
         // 验证调用者是投资者
         require!(ctx.accounts.user.key() == vault.investor, ErrorCode::OnlyInvestor);
         require!(amount > 0, ErrorCode::InvalidAmount);
         require!(vault.is_initialized, ErrorCode::VaultNotInitialized);
 
+        msg!("验证通过，开始更新余额...");
+        
         // 更新余额
         let current_balance = get_token_balance(vault, ctx.accounts.mint.key());
+        msg!("当前余额: {}", current_balance);
+        
         set_token_balance(vault, ctx.accounts.mint.key(), current_balance + amount);
+        let new_balance = get_token_balance(vault, ctx.accounts.mint.key());
+        msg!("更新后余额: {}", new_balance);
 
         emit!(TokenDeposited {
             vault: ctx.accounts.vault.key(),
@@ -165,6 +222,7 @@ pub mod personal_vault {
             timestamp: Clock::get()?.unix_timestamp,
         });
 
+        msg!("存款操作完成!");
         Ok(())
     }
 
@@ -175,17 +233,31 @@ pub mod personal_vault {
     ) -> Result<()> {
         let vault = &mut ctx.accounts.vault;
         
+        msg!("开始取款操作...");
+        msg!("用户地址: {}", ctx.accounts.user.key());
+        msg!("代币地址: {}", ctx.accounts.mint.key());
+        msg!("取款金额: {}", amount);
+        
         // 验证调用者是投资者
         require!(ctx.accounts.user.key() == vault.investor, ErrorCode::OnlyInvestor);
         require!(amount > 0, ErrorCode::InvalidAmount);
         require!(vault.is_initialized, ErrorCode::VaultNotInitialized);
 
+        msg!("验证通过，检查余额...");
+        
         // 检查余额
         let current_balance = get_token_balance(vault, ctx.accounts.mint.key());
+        msg!("当前余额: {}", current_balance);
+        msg!("需要取款金额: {}", amount);
+        
         require!(current_balance >= amount, ErrorCode::InsufficientBalance);
 
+        msg!("余额充足，开始更新余额...");
+        
         // 更新余额
         set_token_balance(vault, ctx.accounts.mint.key(), current_balance - amount);
+        let new_balance = get_token_balance(vault, ctx.accounts.mint.key());
+        msg!("更新后余额: {}", new_balance);
 
         emit!(TokenWithdrawn {
             vault: ctx.accounts.vault.key(),
@@ -195,6 +267,7 @@ pub mod personal_vault {
             timestamp: Clock::get()?.unix_timestamp,
         });
 
+        msg!("取款操作完成!");
         Ok(())
     }
 
@@ -204,7 +277,12 @@ pub mod personal_vault {
         token: Pubkey,
     ) -> Result<u64> {
         let vault = &ctx.accounts.vault;
+        msg!("查询代币余额...");
+        msg!("代币地址: {}", token);
+        
         let balance = get_token_balance(vault, token);
+        msg!("查询到的余额: {}", balance);
+        
         Ok(balance)
     }
 }
