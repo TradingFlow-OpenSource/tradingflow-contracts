@@ -20,8 +20,6 @@ const TEST_ADDRESSES = {
   testToken: new PublicKey("4nHXmTUGNgnZfiJF2nc5QQX8G7g6FkidP3Zw3QJuTDxm")
 };
 
-console.log("测试地址创建成功");
-
 // 设置连接 - 尝试多个 RPC 端点
 const RPC_ENDPOINTS = [
   "https://api.devnet.solana.com",
@@ -603,6 +601,7 @@ async function withdrawToken(
   }
 }
 
+
 // 测试初始化
 async function testInitialize() {
   try {
@@ -751,6 +750,43 @@ async function testInitialize() {
   }
 }
 
+
+// ========== 新增：解析 Anchor 事件日志 ========== //
+/**
+ * 解析 base64 编码的 TokenDeposited Anchor 事件日志
+ * @param encodedData base64 字符串
+ * @returns { vault: PublicKey, user: PublicKey, token: PublicKey, amount: bigint, timestamp: bigint }
+ */
+function parseTokenDepositedEventLog(encodedData: string): {
+  vault: PublicKey,
+  user: PublicKey,
+  token: PublicKey,
+  amount: bigint,
+  timestamp: bigint
+} {
+  // 解码 base64
+  const decodedBytes = Buffer.from(encodedData, 'base64');
+  // 跳过前8字节的 Discriminator
+  const eventData = decodedBytes.slice(8);
+
+  // 解析字段
+  const vault = new PublicKey(eventData.slice(0, 32));
+  const user = new PublicKey(eventData.slice(32, 64));
+  const token = new PublicKey(eventData.slice(64, 96));
+  const amount = eventData.readBigUInt64LE(96);
+  const timestamp = eventData.readBigInt64LE(104);
+
+  // 打印解析结果
+  console.log('TokenDeposited 事件解析结果:');
+  console.log('  Vault    :', vault.toString());
+  console.log('  User     :', user.toString());
+  console.log('  Token    :', token.toString());
+  console.log('  Amount   :', amount.toString());
+  console.log('  Timestamp:', timestamp.toString());
+
+  return { vault, user, token, amount, timestamp };
+}
+
 // 导出函数
 export {
   generateVaultPDA,
@@ -768,4 +804,5 @@ export {
 };
 
 // 运行测试
-testInitialize(); 
+// testInitialize(); 
+parseTokenDepositedEventLog("aAcSu16N+3hkLphr8tl40atnYZs0i9MbNIaP0QJr5OGxko3sP2R0ICOGGG8WjHi0ZOnHMsxSNAJmLGexF5YGaOFoc/t/F9FExvp6877brTo9ZfNqq8l0MbG75MLS9uDkfKYCA0UvXWFAQg8AAAAAAAlplGgAAAAA")
