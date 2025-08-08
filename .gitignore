@@ -11,3 +11,4 @@ dist/
 build/
 
 /solana/PersonalVault/target
+.anchor/
