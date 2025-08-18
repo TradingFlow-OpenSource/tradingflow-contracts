@@ -1,164 +1,473 @@
-# Ethereum 和 Solana 区别
+# TradingFlow Solana PersonalVault
 
-## EVM (Ethereum) 的代理模式
+A comprehensive Solana-based personal vault system built with Anchor framework, providing secure asset management and automated trading capabilities through Byreal CLMM DEX integration.
 
-### 1. EVM 的合约部署机制
-  在 EVM 中，每个合约都是独立的，有自己的存储空间和逻辑：
-  合约A (地址: 0x123...) → 存储数据A + 逻辑A
-  合约B (地址: 0x456...) → 存储数据B + 逻辑B
-  合约C (地址: 0x789...) → 存储数据C + 逻辑C
-### 2. 为什么需要代理模式？
+## Table of Contents
 
-**问题**：如果用户直接部署 PersonalVaultUpgradeableUniV2.sol，每个用户都会：
+- [Overview](#overview)
+- [Architecture](#architecture)
+- [Key Features](#key-features)
+- [Contract Structure](#contract-structure)
+- [Development Setup](#development-setup)
+- [API Reference](#api-reference)
+- [Testing](#testing)
+- [Security Features](#security-features)
+- [Byreal CLMM Integration](#byreal-clmm-integration)
+- [Deployment](#deployment)
+- [Environment Variables](#environment-variables)
+- [Contributing](#contributing)
 
-- 部署一个完整的合约副本
-- 消耗大量 Gas（每个合约都包含完整的逻辑代码）
-- 无法升级（每个合约都是独立的）
+## Overview
 
-**解决方案**：代理模式
+The Solana PersonalVault is an Anchor-based program that enables users to create and manage personal cryptocurrency vaults with automated trading capabilities. Unlike EVM-based solutions that require proxy patterns, Solana's account model allows for efficient, cost-effective vault management through Program Derived Addresses (PDAs).
 
-实现合约 (Implementation) → 包含所有逻辑代码
-    ↓
-代理合约 (Proxy) → 只包含存储，逻辑委托给实现合约
-    ↓
-用户调用代理合约 → 代理合约转发给实现合约执行
+### Why Solana?
 
-### 3. EVM 代理模式的工作流程
+**Cost Efficiency**: No need for proxy contracts - users only pay for account creation
+**Simplicity**: Program logic is unified, eliminating implementation address management
+**Security**: Program upgrades don't affect user data stored in separate accounts
+**Performance**: Native parallel processing and low transaction costs
 
-```solidity
-// 1. 部署实现合约
-PersonalVaultUpgradeableUniV2 impl = new PersonalVaultUpgradeableUniV2();
-// 地址: 0x1234567890...
+## Architecture
 
-// 2. 部署工厂合约，传入实现合约地址
-PersonalVaultFactoryUniV2 factory = new PersonalVaultFactoryUniV2(
-    admin,
-    0x1234567890..., // 实现合约地址
-    bot
-);
-
-// 3. 用户创建金库时，工厂创建代理合约
-function createVault() {
-    // 创建代理合约，指向实现合约
-    ERC1967Proxy proxy = new ERC1967Proxy(
-        personalVaultImplementation, // 实现合约地址
-        data // 初始化数据
-    );
-    // 代理合约地址: 0xabcdef...
-}
-```
-
-### 4. 代理合约的内部机制
-
-```solidity
-// 代理合约的 fallback 函数
-fallback() external {
-    // 1. 获取实现合约地址
-    address impl = implementation;
-    
-    // 2. 委托调用实现合约
-    (bool success, bytes memory data) = impl.delegatecall(msg.data);
-    
-    // 3. 返回结果
-    assembly {
-        return(add(data, 32), mload(data))
-    }
-}
-```
-
-## Solana 的账户模型
-
-### 1. Solana 的账户结构
-
-在 Solana 中，账户是数据存储的基本单位：
-
-程序 (Program) → 包含逻辑代码，不存储数据
-    ↓
-账户 (Account) → 存储数据，由程序管理
-    ↓
-用户调用程序 → 程序直接操作账户数据
-
-### 2. Solana 账户的特点
+### Account Model
 
 ```rust
-// 账户结构
 pub struct PersonalVault {
-    pub investor: Pubkey,      // 投资者地址
-    pub admin: Pubkey,         // 管理员地址
-    pub bot: Pubkey,           // 机器人地址
-    pub balances: Vec<TokenBalance>, // 余额数据
-    // ... 其他数据
+    pub investor: Pubkey,        // Vault owner
+    pub admin: Pubkey,           // Administrator
+    pub bot: Pubkey,             // Automated trading bot
+    pub swap_router: Pubkey,     // DEX router address
+    pub wrapped_native: Pubkey,  // Wrapped SOL token
+    pub is_initialized: bool,    // Initialization status
+    pub balances: Vec<TokenBalance>, // Token balances
 }
 ```
 
-### 3. 为什么 Solana 不需要代理模式？
+### PDA (Program Derived Address)
 
-原因1：程序与数据分离
-
-- 程序代码存储在程序账户中（只存储一次）
-
-- 用户数据存储在独立的账户中
-
-- 多个用户共享同一个程序，但数据独立
-
-原因2：账户模型天然支持
+Each user's vault is created using a deterministic PDA:
 
 ```rust
-// 用户A的金库账户
-PersonalVault {
-    investor: "UserA",
-    balances: [...]
-}
-
-// 用户B的金库账户  
-PersonalVault {
-    investor: "UserB", 
-    balances: [...]
-}
-
-// 都使用同一个程序处理逻辑
-```
-
-原因3：PDA (Program Derived Address)
-
-```rust
-// 每个用户的金库账户地址由程序派生
 let (vault_pda, _bump) = Pubkey::find_program_address(
     &[b"vault", user.key().as_ref()],
     &program_id
 );
 ```
 
-## 详细对比
+## Key Features
 
-### EVM 模式
+### 🏦 **Personal Vault Management**
+- Individual vault creation with PDA-based addressing
+- Multi-token balance tracking and management
+- Role-based access control (investor, admin, bot)
 
-实现合约 (0x123...) → 包含完整逻辑
-    ↓
-工厂合约 (0x456...) → 创建代理合约
-    ↓
-代理合约A (0x789...) → 指向实现合约，存储用户A数据
-代理合约B (0xabc...) → 指向实现合约，存储用户B数据
-代理合约C (0xdef...) → 指向实现合约，存储用户C数据
+### 🤖 **Automated Trading**
+- Bot-controlled trading signals and execution
+- Integration with Byreal CLMM for optimal liquidity
+- Configurable fee structures with parts-per-million precision
 
-### Solana 模式
+### 🔐 **Security & Access Control**
+- Investor-only deposit and withdrawal operations
+- Admin-controlled configuration management
+- Bot-exclusive trading signal execution
 
-程序 (Program) → 包含完整逻辑
-    ↓
-用户A账户 → 存储用户A数据
-用户B账户 → 存储用户B数据  
-用户C账户 → 存储用户C数据
+### 💰 **Fee Management**
+- Configurable trading fees (up to 100% with 0.0001% precision)
+- Fee recipient management
+- Transparent fee calculation and distribution
 
-## 为什么这种差异很重要？
+### 📊 **Event Tracking**
+- Comprehensive event emission for all operations
+- Timestamp tracking in microseconds
+- Complete audit trail for compliance
 
-### EVM 的挑战
+## Contract Structure
 
-1. Gas 成本高：每个代理合约都需要部署
-2. 复杂性：需要管理实现合约地址
-3. 升级风险：升级实现合约可能影响所有代理
+### Core Functions
 
-### Solana 的优势
+#### Vault Management
+- `create_balance_manager()` - Initialize a new personal vault
+- `set_bot()` - Update automated trading bot address
+- `set_admin()` - Transfer administrative control
 
-1. 成本低：只需要创建账户，不需要部署合约
-2. 简单性：程序逻辑统一，不需要管理实现地址
-3. 安全性：程序升级不会影响用户数据
+#### Asset Operations
+- `user_deposit()` - Deposit tokens into vault
+- `user_withdraw()` - Withdraw tokens from vault
+- `get_balance()` - Query token balances
+
+#### Trading Operations
+- `send_trade_signal()` - Execute automated trades via bot
+
+### Account Contexts
+
+```rust
+#[derive(Accounts)]
+pub struct CreateBalanceManager<'info> {
+    #[account(
+        init,
+        payer = user,
+        space = 8 + 32 + 32 + 32 + 32 + 32 + 1 + 4 + 40 * 10,
+        seeds = [b"vault", user.key().as_ref()],
+        bump
+    )]
+    pub vault: Account<'info, PersonalVault>,
+    #[account(mut)]
+    pub user: Signer<'info>,
+    pub system_program: Program<'info, System>,
+}
+```
+
+## Development Setup
+
+### Prerequisites
+
+```bash
+# Install Rust
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+
+# Install Solana CLI
+sh -c "$(curl -sSfL https://release.solana.com/v1.16.0/install)"
+
+# Install Anchor
+npm install -g @coral-xyz/anchor-cli
+```
+
+### Project Setup
+
+```bash
+# Clone the repository
+git clone <repository-url>
+cd 4_weather_vault/solana/PersonalVault
+
+# Install dependencies
+npm install
+
+# Build the program
+anchor build
+
+# Run tests
+anchor test
+```
+
+### Configuration
+
+Update `Anchor.toml` for your environment:
+
+```toml
+[features]
+seeds = false
+skip-lint = false
+
+[programs.localnet]
+personal_vault = "5DSNTh2tDqJdH2MrvFAHMQxBMRmsbFVgE56JQ6fPqkaY"
+
+[programs.devnet]
+personal_vault = "5DSNTh2tDqJdH2MrvFAHMQxBMRmsbFVgE56JQ6fPqkaY"
+
+[programs.mainnet]
+personal_vault = "5DSNTh2tDqJdH2MrvFAHMQxBMRmsbFVgE56JQ6fPqkaY"
+
+[registry]
+url = "https://api.apr.dev"
+
+[provider]
+cluster = "localnet"
+wallet = "~/.config/solana/id.json"
+
+[scripts]
+test = "yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/**/*.ts"
+```
+
+## API Reference
+
+### create_balance_manager
+
+Creates a new personal vault for the user.
+
+```rust
+pub fn create_balance_manager(
+    ctx: Context<CreateBalanceManager>,
+    bot_address: Pubkey,
+    swap_router: Pubkey,
+    wrapped_native: Pubkey,
+) -> Result<()>
+```
+
+**Parameters:**
+- `bot_address`: Automated trading bot public key
+- `swap_router`: DEX router address (Raydium, Orca, etc.)
+- `wrapped_native`: Wrapped SOL token address
+
+**Events:** `BalanceManagerCreatedEvent`
+
+### user_deposit
+
+Deposits tokens into the user's vault.
+
+```rust
+pub fn user_deposit(
+    ctx: Context<UserDeposit>,
+    amount: u64,
+) -> Result<()>
+```
+
+**Access:** Investor only
+**Events:** `UserDepositEvent`
+
+### user_withdraw
+
+Withdraws tokens from the user's vault.
+
+```rust
+pub fn user_withdraw(
+    ctx: Context<UserWithdraw>,
+    amount: u64,
+) -> Result<()>
+```
+
+**Access:** Investor only
+**Events:** `UserWithdrawEvent`
+
+### send_trade_signal
+
+Executes automated trading through the bot.
+
+```rust
+pub fn send_trade_signal(
+    ctx: Context<SendTradeSignal>,
+    token_in: Pubkey,
+    token_out: Pubkey,
+    amount_in: u64,
+    amount_out_minimum: u64,
+    fee_rate: u64,
+) -> Result<u64>
+```
+
+**Access:** Bot only
+**Fee Rate:** Parts per million (1 = 0.0001%)
+**Events:** `TradeSignalEvent`
+
+## Testing
+
+### Unit Tests
+
+```bash
+# Run all tests
+anchor test
+
+# Run specific test file
+anchor test --skip-deploy tests/personal-vault.ts
+```
+
+### Test Coverage
+
+The test suite covers:
+- Vault creation and initialization
+- Deposit and withdrawal operations
+- Role-based access control
+- Trading signal execution
+- Fee calculation and distribution
+- Error handling and edge cases
+
+### Integration Tests
+
+```bash
+# Test with local validator
+solana-test-validator &
+anchor test --skip-deploy
+```
+
+## Security Features
+
+### Access Control
+
+- **Investor Role**: Can deposit, withdraw, and manage vault settings
+- **Admin Role**: Can update bot and admin addresses
+- **Bot Role**: Can execute trading signals exclusively
+
+### Validation
+
+- Amount validation (non-zero, sufficient balance)
+- Address validation (non-default public keys)
+- Initialization checks
+- Fee rate limits (maximum 100%)
+
+### Error Handling
+
+```rust
+#[error_code]
+pub enum ErrorCode {
+    #[msg("Invalid bot address")]
+    InvalidBotAddress,
+    #[msg("Only investor can operate")]
+    OnlyInvestor,
+    #[msg("Insufficient balance")]
+    InsufficientBalance,
+    #[msg("Vault not initialized")]
+    VaultNotInitialized,
+    // ... additional error codes
+}
+```
+
+## Byreal CLMM Integration
+
+### Overview
+
+The vault integrates with Byreal CLMM (Concentrated Liquidity Market Maker) for optimal trading execution and liquidity provision.
+
+### Program IDs
+
+```rust
+// Devnet
+#[cfg(feature = "devnet")]
+pub const BYREAL_CLMM_PROGRAM_ID: &str = "45iBNkaENereLKMjLm2LHkF3hpDapf6mnvrM5HWFg9cY";
+
+// Mainnet
+#[cfg(not(feature = "devnet"))]
+pub const BYREAL_CLMM_PROGRAM_ID: &str = "REALQqNEomY6cQGZJUGwywTBD2UmDT32rZcNnfxQ5N2";
+```
+
+### Pool Address Calculation
+
+```rust
+fn get_byreal_pool_address(amm_config: Pubkey, token_a: Pubkey, token_b: Pubkey) -> Result<Pubkey> {
+    let (token_mint_0, token_mint_1) = if token_a < token_b {
+        (token_a, token_b)
+    } else {
+        (token_b, token_a)
+    };
+    
+    let (pool_address, _bump) = Pubkey::find_program_address(
+        &[
+            b"pool",
+            amm_config.as_ref(),
+            token_mint_0.as_ref(),
+            token_mint_1.as_ref(),
+        ],
+        &Pubkey::from_str(BYREAL_CLMM_PROGRAM_ID).unwrap(),
+    );
+    
+    Ok(pool_address)
+}
+```
+
+### CPI Integration
+
+The vault uses Cross-Program Invocation (CPI) to interact with Byreal CLMM:
+
+```rust
+pub fn execute_byreal_swap_cpi<'info>(
+    ctx: &Context<SendTradeSignal<'info>>,
+    amount_in: u64,
+    amount_out_minimum: u64,
+) -> Result<u64>
+```
+
+## Deployment
+
+### Local Deployment
+
+```bash
+# Start local validator
+solana-test-validator
+
+# Deploy program
+anchor deploy
+```
+
+### Devnet Deployment
+
+```bash
+# Configure for devnet
+solana config set --url devnet
+
+# Deploy to devnet
+anchor deploy --provider.cluster devnet
+```
+
+### Mainnet Deployment
+
+```bash
+# Configure for mainnet
+solana config set --url mainnet-beta
+
+# Deploy to mainnet (requires sufficient SOL)
+anchor deploy --provider.cluster mainnet-beta
+```
+
+## Environment Variables
+
+### Required Configuration
+
+```bash
+# Solana Configuration
+SOLANA_CLUSTER=devnet  # or mainnet-beta
+ANCHOR_WALLET=~/.config/solana/id.json
+
+# Program Configuration
+PROGRAM_ID=5DSNTh2tDqJdH2MrvFAHMQxBMRmsbFVgE56JQ6fPqkaY
+
+# Byreal CLMM Configuration
+BYREAL_PROGRAM_ID_DEVNET=45iBNkaENereLKMjLm2LHkF3hpDapf6mnvrM5HWFg9cY
+BYREAL_PROGRAM_ID_MAINNET=REALQqNEomY6cQGZJUGwywTBD2UmDT32rZcNnfxQ5N2
+
+# Token Addresses
+WRAPPED_SOL=So11111111111111111111111111111111111111112
+USDC_MINT=EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v
+
+# Fee Configuration
+DEFAULT_FEE_RATE=2500  # 0.25% in parts per million
+FEE_RECIPIENT=<fee_recipient_address>
+```
+
+### Development Environment
+
+```bash
+# Copy environment template
+cp .env.example .env
+
+# Update with your configuration
+vim .env
+```
+
+## Contributing
+
+### Development Guidelines
+
+1. **Code Style**: Follow Rust and Anchor conventions
+2. **Testing**: Ensure comprehensive test coverage
+3. **Documentation**: Update docs for API changes
+4. **Security**: Conduct thorough security reviews
+
+### Pull Request Process
+
+1. Fork the repository
+2. Create a feature branch
+3. Implement changes with tests
+4. Update documentation
+5. Submit pull request
+
+### Security Considerations
+
+- Always validate input parameters
+- Use proper access control modifiers
+- Implement comprehensive error handling
+- Conduct security audits before mainnet deployment
+
+## License
+
+This project is licensed under the MIT License - see the [LICENSE](../../../LICENSE) file for details.
+
+## Support
+
+For technical support and questions:
+- Create an issue in the repository
+- Join our Discord community
+- Review the documentation and examples
+
+---
+
+**⚠️ Important Security Notice**
+
+This software is provided as-is for educational and development purposes. Always conduct thorough testing and security audits before deploying to mainnet with real funds. The developers are not responsible for any financial losses incurred through the use of this software.

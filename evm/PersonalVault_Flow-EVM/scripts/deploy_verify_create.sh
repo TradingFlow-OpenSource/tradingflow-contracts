@@ -11,7 +11,7 @@ echo -e "${YELLOW}========== 个人金库部署、验证和创建脚本 ========
 # 1. 部署合约
 echo -e "${GREEN}步骤 1: 部署合约${NC}"
 echo "正在部署 PersonalVaultUpgradeableUniV2 和 PersonalVaultFactoryUniV2 合约..."
-npx hardhat run scripts/deploy.js --network flow
+npx hardhat run deploy.js --network flow
 
 # 等待部署完成，给用户时间查看输出
 echo -e "${YELLOW}部署完成。请确认上面显示的合约地址，然后按回车继续...${NC}"
@@ -47,6 +47,6 @@ read -p ""
 # 3. 创建金库
 echo -e "${GREEN}步骤 3: 创建金库${NC}"
 echo "正在创建个人金库..."
-npx hardhat run scripts/createVault.js --network flow
+npx hardhat run createVault.js --network flow
 
 echo -e "${YELLOW}========== 脚本执行完成 ==========${NC}"

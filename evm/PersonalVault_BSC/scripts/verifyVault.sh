@@ -49,8 +49,60 @@ echo "正在验证 PersonalVaultUpgradeableUniV3 合约源码..."
 echo "合约地址: $VAULT_ADDRESS"
 echo ""
 
-# 使用hardhat verify验证合约
-npx hardhat verify --network $NETWORK $VAULT_ADDRESS
+# 首先获取实现合约地址
+echo "正在获取实现合约地址..."
+# 创建临时脚本
+cat > temp_script.js << EOL
+const { ethers } = require("hardhat");
+
+async function main() {
+  const proxyAddress = "$VAULT_ADDRESS";
+  const IMPLEMENTATION_SLOT = "0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc";
+  
+  // 获取网络连接 - ethers v6 API
+  const [signer] = await ethers.getSigners();
+  const provider = signer.provider;
+  
+  // 获取存储槽位的数据
+  const implementationData = await provider.getStorage(proxyAddress, IMPLEMENTATION_SLOT);
+  
+  // 解析地址
+  const implementationAddress = "0x" + implementationData.slice(26);
+  console.log(implementationAddress);
+}
+
+main()
+  .then(() => process.exit(0))
+  .catch((error) => {
+    console.error(error);
+    process.exit(1);
+  });
+EOL
+
+IMPL_ADDRESS=$(npx hardhat run --network $NETWORK temp_script.js)
+rm temp_script.js
+
+if [ -z "$IMPL_ADDRESS" ]; then
+    echo -e "${RED}✖ 无法获取实现合约地址${NC}"
+    exit 1
+fi
+
+echo "实现合约地址: $IMPL_ADDRESS"
+
+# 首先验证实现合约
+echo "正在验证实现合约..."
+echo "强制重新编译合约..."
+npx hardhat compile --force
+
+echo "验证实现合约: $IMPL_ADDRESS"
+npx hardhat verify --network $NETWORK $IMPL_ADDRESS
+
+# 然后验证代理合约
+echo "验证代理合约: $VAULT_ADDRESS"
+echo "实现合约已验证，现在验证代理合约..."
+
+# 使用专门的代理验证脚本
+npx hardhat run --network $NETWORK scripts/verifyProxy.js
 
 if [ $? -eq 0 ]; then
     echo ""

@@ -1,118 +1,310 @@
-# MultiVault 模块
+# TradingFlow MultiVault
 
-本模块为“多人金库”系统，支持多个用户共同存取和管理资产，基于 EVM 合约实现，适合团队、DAO 或多签场景。
+An advanced ERC4626-compliant multi-user vault system enabling shared asset management and automated trading strategies across EVM-compatible networks.
 
-## 目录结构
+## 🏗️ Architecture Overview
 
--   contracts/
-    -   UniswapVault.sol // 多人金库核心合约
-    -   PriceOracle.sol // 价格预言机合约
-    -   MyToken.sol // 示例代币合约
--   scripts/
-    -   各类金库/交易/管理相关脚本
--   test/
-    -   单元测试（推荐 Hardhat/Foundry）
--   README.md
+The MultiVault system implements a sophisticated shared liquidity model where multiple users can:
+- **Pool Assets**: Contribute to shared liquidity pools with proportional ownership
+- **Automated Trading**: Benefit from algorithmic trading strategies managed by oracles
+- **Share-Based Accounting**: Receive vault tokens representing proportional ownership
+- **Collective Benefits**: Leverage pooled capital for better trading opportunities
 
-## 主要功能
+## 🚀 Key Features
 
--   多用户可共同存入、赎回资产
--   支持多种 ERC20 资产
--   支持策略管理、交易信号、Uniswap 路由集成
--   事件追踪、资产配置查询
+### 💰 **ERC4626 Vault Standard**
+- **Tokenized Shares**: Full compatibility with ERC4626 standard for vault tokens
+- **Proportional Ownership**: Share-based accounting for fair asset distribution
+- **Real-Time Valuation**: Continuous portfolio value calculation across multiple assets
+- **Standardized Interface**: Compatible with DeFi protocols and yield aggregators
 
-## 快速开始
+### 🤖 **Oracle-Guided Trading**
+- **Automated Signals**: Execute buy/sell operations based on external oracle inputs
+- **Multi-Pair Support**: Trade across multiple token pairs with configurable limits
+- **Advanced Parameters**: Custom fee tiers, slippage protection, and price limits
+- **Strategy Management**: Configurable trading strategies with activation controls
 
-### 1. 部署合约
+### 🔐 **Role-Based Security**
+- **Platform Owner**: Manages oracle roles and emergency functions
+- **Strategy Manager**: Controls trading pairs and strategy activation/deactivation
+- **Oracle Role**: Executes trading signals with predetermined parameters
+- **Users**: Deposit/withdraw assets and receive proportional vault shares
 
-```shell
-npx hardhat run scripts/deployVault.ts --network <your_network>
+## 📋 Contract Structure
+
+```
+contracts/
+├── UniswapVault.sol          # Core ERC4626 vault implementation
+├── PriceOracle.sol           # Price feed and valuation oracle
+└── MyToken.sol               # Example ERC20 token for testing
 ```
 
-### 2. 存款/赎回/交易
+### Core Contract: `UniswapVault.sol`
 
-见 scripts/ 目录下示例脚本。
+```solidity
+contract OracleGuidedVault is ERC4626, AccessControl, ReentrancyGuard {
+    // Role definitions
+    bytes32 public constant PLATFORM_OWNER_ROLE = keccak256("PLATFORM_OWNER_ROLE");
+    bytes32 public constant STRATEGY_MANAGER_ROLE = keccak256("STRATEGY_MANAGER_ROLE");
+    bytes32 public constant ORACLE_ROLE = keccak256("ORACLE_ROLE");
+    
+    // Core functions
+    function deposit(uint256 assets, address receiver) external returns (uint256 shares);
+    function withdraw(uint256 assets, address receiver, address owner) external returns (uint256 shares);
+    function executeBuySignal(address tokenToBuy, uint256 amountIn, ...) external onlyRole(ORACLE_ROLE);
+    function executeSellSignal(address tokenToSell, uint256 amountOut, ...) external onlyRole(ORACLE_ROLE);
+}
+```
 
-## 权限说明
+## 🛠️ Development Setup
 
--   管理员可配置策略、添加/禁用交易对
--   预言机/Bot 可发起交易信号
--   用户可存取资产
+### Prerequisites
 
-## 事件
+```bash
+# Install Node.js dependencies
+npm install
 
--   SignalReceived
--   TradeExecuted
--   StrategyStatusChanged
--   UserDeposit/UserWithdraw
+# Install Hardhat
+npm install --save-dev hardhat
 
-## 测试
+# Verify installation
+npx hardhat --version
+```
 
-建议使用 Hardhat/Foundry 编写测试用例，覆盖多用户存取、策略执行、权限管理等核心场景。
+### Environment Configuration
+
+```bash
+# Copy environment template
+cp .env.example .env
+
+# Configure required variables
+PRIVATE_KEY=0x...
+INFURA_API_KEY=...
+ETHERSCAN_API_KEY=...
+```
+
+### Compilation & Deployment
+
+```bash
+# Compile contracts
+npx hardhat compile
+
+# Run tests
+npx hardhat test
+
+# Deploy to testnet
+npx hardhat run scripts/deployVault.ts --network goerli
+
+# Deploy to mainnet
+npx hardhat run scripts/deployVault.ts --network mainnet
+
+# Verify contracts
+npx hardhat verify --network mainnet <CONTRACT_ADDRESS>
+```
+
+## 📖 API Reference
+
+### User Functions
+
+#### `deposit(uint256 assets, address receiver)`
+Deposits assets into the vault and mints proportional shares.
+- **Parameters**: `assets` - Amount to deposit, `receiver` - Share recipient
+- **Returns**: Number of vault shares minted
+- **Events**: `Deposit(caller, receiver, assets, shares)`
+
+#### `withdraw(uint256 assets, address receiver, address owner)`
+Withdraws assets from the vault by burning shares.
+- **Parameters**: `assets` - Amount to withdraw, `receiver` - Asset recipient, `owner` - Share owner
+- **Returns**: Number of shares burned
+- **Events**: `Withdraw(caller, receiver, owner, assets, shares)`
+
+### Oracle Functions
+
+#### `executeBuySignal(address tokenToBuy, uint256 amountIn, ...)`
+Executes automated buy orders based on oracle signals.
+- **Access**: `ORACLE_ROLE` only
+- **Parameters**: Target token, input amount, swap parameters
+- **Events**: `SignalReceived`, `TradeExecuted`
+
+#### `executeSellSignal(address tokenToSell, uint256 amountOut, ...)`
+Executes automated sell orders for portfolio rebalancing.
+- **Access**: `ORACLE_ROLE` only
+- **Parameters**: Source token, output amount, swap parameters
+- **Events**: `SignalReceived`, `TradeExecuted`
+
+### Management Functions
+
+#### `addTradingPair(address tokenA, address tokenB, uint256 maxAllocation)`
+Adds new trading pairs to the vault strategy.
+- **Access**: `STRATEGY_MANAGER_ROLE` only
+- **Parameters**: Token pair addresses and maximum allocation percentage
+
+#### `setStrategyStatus(bool active)`
+Activates or deactivates automated trading strategies.
+- **Access**: `STRATEGY_MANAGER_ROLE` only
+- **Events**: `StrategyStatusChanged`
+
+## 🧪 Testing
+
+### Comprehensive Test Suite
+
+```bash
+# Run all tests
+npx hardhat test
+
+# Run specific test files
+npx hardhat test test/MultiVault.test.js
+npx hardhat test test/Oracle.test.js
+
+# Run tests with coverage
+npx hardhat coverage
+```
+
+### Test Coverage Areas
+- ✅ **ERC4626 Compliance**: Standard vault operations and share calculations
+- ✅ **Multi-User Operations**: Concurrent deposits, withdrawals, and share management
+- ✅ **Oracle Integration**: Automated trading signal execution and validation
+- ✅ **Access Control**: Role-based permission testing and security validation
+- ✅ **Emergency Scenarios**: Circuit breakers and emergency exit mechanisms
+- ✅ **Edge Cases**: Slippage protection, insufficient liquidity, and error handling
+
+## 🔐 Security Features
+
+### Access Control Matrix
+
+| Function | Platform Owner | Strategy Manager | Oracle | Users |
+|----------|---------------|------------------|---------|-------|
+| `deposit/withdraw` | ✅ | ✅ | ✅ | ✅ |
+| `executeBuySignal` | ❌ | ❌ | ✅ | ❌ |
+| `executeSellSignal` | ❌ | ❌ | ✅ | ❌ |
+| `addTradingPair` | ✅ | ✅ | ❌ | ❌ |
+| `setStrategyStatus` | ✅ | ✅ | ❌ | ❌ |
+| `emergencyExit` | ✅ | ❌ | ❌ | ❌ |
+
+### Security Measures
+- **Reentrancy Protection**: OpenZeppelin's ReentrancyGuard on all external calls
+- **Role-Based Access**: Granular permissions with time-locked admin functions
+- **Slippage Protection**: Configurable maximum slippage for all trades
+- **Emergency Controls**: Circuit breakers and emergency asset recovery
+- **Audit Trail**: Comprehensive event logging for all operations
+
+## 🌐 Uniswap Integration
+
+### Supported Operations
+- **Exact Input Swaps**: Specify input amount with minimum output protection
+- **Exact Output Swaps**: Specify desired output with maximum input limits
+- **Multi-Hop Routing**: Automatic optimal path finding through Uniswap V3
+- **Fee Tier Selection**: Support for 0.05%, 0.3%, and 1% fee tiers
+
+### Integration Example
+```solidity
+// Execute swap through Uniswap V3
+ISwapRouter.ExactInputSingleParams memory params = ISwapRouter.ExactInputSingleParams({
+    tokenIn: tokenIn,
+    tokenOut: tokenOut,
+    fee: feeTier,
+    recipient: address(this),
+    deadline: block.timestamp + 300,
+    amountIn: amountIn,
+    amountOutMinimum: amountOutMin,
+    sqrtPriceLimitX96: 0
+});
+
+swapRouter.exactInputSingle(params);
+```
+
+## 📊 Event System
+
+### Core Events
+
+```solidity
+event SignalReceived(
+    address indexed oracle,
+    address indexed tokenIn,
+    address indexed tokenOut,
+    uint256 amountIn,
+    uint256 timestamp
+);
+
+event TradeExecuted(
+    address indexed tokenIn,
+    address indexed tokenOut,
+    uint256 amountIn,
+    uint256 amountOut,
+    uint256 timestamp
+);
+
+event StrategyStatusChanged(
+    bool indexed active,
+    address indexed manager,
+    uint256 timestamp
+);
+```
+
+## 🚀 Deployment Scripts
+
+The `scripts/` directory contains comprehensive deployment and management utilities:
+
+### Deployment Scripts
+- `deployVault.ts` - Deploy vault with initial configuration
+- `setupRoles.ts` - Configure access control roles
+- `addTradingPairs.ts` - Initialize supported trading pairs
+
+### Management Scripts
+- `executeTradeSignal.ts` - Manual trade signal execution
+- `updateStrategy.ts` - Modify trading strategy parameters
+- `emergencyExit.ts` - Emergency asset recovery procedures
+
+### Usage Example
+```bash
+# Deploy complete vault system
+npx hardhat run scripts/deployVault.ts --network mainnet
+
+# Setup initial roles and permissions
+npx hardhat run scripts/setupRoles.ts --network mainnet
+
+# Add supported trading pairs
+npx hardhat run scripts/addTradingPairs.ts --network mainnet
+```
+
+## 🔧 Configuration
+
+### Hardhat Configuration
+```javascript
+module.exports = {
+  solidity: "0.8.20",
+  networks: {
+    mainnet: {
+      url: `https://mainnet.infura.io/v3/${process.env.INFURA_API_KEY}`,
+      accounts: [process.env.PRIVATE_KEY]
+    }
+  },
+  etherscan: {
+    apiKey: process.env.ETHERSCAN_API_KEY
+  }
+};
+```
+
+## 🤝 Contributing
+
+### Development Workflow
+1. Fork the repository
+2. Create feature branch: `git checkout -b feature/new-vault-feature`
+3. Implement changes with comprehensive tests
+4. Ensure all tests pass: `npx hardhat test`
+5. Submit pull request with detailed description
+
+### Code Standards
+- Follow Solidity best practices and OpenZeppelin patterns
+- Include NatSpec documentation for all public functions
+- Maintain test coverage above 95%
+- Use consistent naming conventions and code formatting
+
+## 📄 License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
 ---
 
-如需定制脚本或有特殊业务需求，请联系开发者。
+**TradingFlow MultiVault** - Advanced shared asset management with automated trading strategies for the DeFi ecosystem.
 
-# OracleGuidedVault - Automated Uniswap V3 Trading Vault
-
-## Overview
-
-The **OracleGuidedVault** is a sophisticated ERC4626-compliant vault contract that automates cryptocurrency trading on Uniswap V3 based on oracle-driven signals. This contract combines traditional vault functionality with algorithmic trading capabilities, enabling users to deposit assets and have them automatically managed through strategic trading operations.
-
-## Key Features
-
-### 🏦 **ERC4626 Vault Standard**
-
--   Full compatibility with the ERC4626 tokenized vault standard
--   Secure deposit/withdrawal mechanisms with share-based accounting
--   Real-time asset valuation across multiple token holdings
-
-### 🤖 **Oracle-Driven Trading**
-
--   Automated buy/sell signal execution based on external oracle inputs
--   Support for multiple trading pairs with configurable allocation limits
--   Advanced swap parameters including fee tiers and slippage protection
-
-### 🔐 **Role-Based Access Control**
-
--   **Platform Owner**: Manages oracle roles and emergency functions
--   **Strategy Manager**: Controls trading pairs and strategy activation
--   **Oracle Role**: Executes trading signals with predetermined parameters
-
-## Core Functionality
-
-### Trading Operations
-
--   **Buy Signals**: Automatically purchase tokens when favorable conditions are detected
--   **Sell Signals**: Execute strategic exits based on market conditions or portfolio rebalancing needs
--   **Advanced Swaps**: Support for custom fee tiers, price limits, and complex trading parameters
-
-### Portfolio Management
-
--   **Multi-Asset Support**: Manage diverse cryptocurrency portfolios within a single vault
--   **Intelligent Liquidity Management**: Automatically rebalance assets to ensure sufficient liquidity for withdrawals
--   **Real-Time Valuation**: Continuous portfolio value calculation using integrated price oracles
-
-### Risk Management
-
--   **Allocation Limits**: Configurable maximum allocation percentages per trading pair
--   **Emergency Exit**: Owner-controlled function to liquidate all positions in crisis situations
--   **Reentrancy Protection**: Comprehensive security measures against common smart contract vulnerabilities
-
-## Technical Architecture
-
-Built on **Solidity 0.8.20** with integration to:
-
--   **OpenZeppelin**: Security-audited base contracts for access control and reentrancy protection
--   **Uniswap V3**: Direct integration with SwapRouter for optimal trading execution
--   **Custom Price Oracle**: Real-time asset valuation and portfolio management
-
-## Use Cases
-
--   **Algorithmic Trading**: Automated execution of predefined trading strategies
--   **Portfolio Management**: Hands-off cryptocurrency portfolio management
--   **Yield Optimization**: Strategic rebalancing to maximize returns
--   **Risk Mitigation**: Automated stop-loss and take-profit mechanisms
-
-The OracleGuidedVault represents a new generation of DeFi infrastructure, bridging traditional finance concepts with cutting-edge blockchain technology to deliver sophisticated, automated investment management solutions.
