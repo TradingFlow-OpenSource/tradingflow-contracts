@@ -1,6 +1,6 @@
 import { Aptos, Account, Ed25519PrivateKey } from "@aptos-labs/ts-sdk";
 import { createAptosClient, createAccountFromPrivateKey, waitForTransaction } from "../utils";
-import { CONTRACT_ADDRESS } from "../config";
+import { CONTRACT_ADDRESS, USER_PRIVATE_KEY, ADMIN_PRIVATE_KEY } from "../config";
 import { getBalances } from "../core/getBalances";
 import { tradeSignal } from "../core/tradeSignal";
 import * as fs from "fs";
@@ -11,9 +11,6 @@ const TOKEN_METADATA = {
   APT: "0xa",
   USDC: "0xbae207659db88bea0cbead6da0ed00aac12edcdda169e591cd41c94180b46f3b"
 };
-
-const USER_PRIVATE_KEY = "ed25519-priv-0x8c8e0b0a1e8b5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a"; // 替换为实际私钥
-const ADMIN_PRIVATE_KEY = "ed25519-priv-0x8c8e0b0a1e8b5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a"; // 替换为实际私钥
 
 // 账户文件路径
 const ACCOUNTS_FILE_PATH = path.join(__dirname, "generated_accounts.json");

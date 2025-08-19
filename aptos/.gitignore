@@ -10,3 +10,5 @@ examples
 dist/
 
 ts-scripts/node_modules/
+
+generated_accounts.json
