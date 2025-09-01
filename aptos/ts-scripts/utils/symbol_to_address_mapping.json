@@ -1,0 +1,737 @@
+{
+  "python_mapping": {
+    "APT": "0xa",
+    "USDt": "0x357b0b74bc833e95a115ad22604854d6b0fca151cecd94111770e5d6ffc9dc2b",
+    "USDC": "0xbae207659db88bea0cbead6da0ed00aac12edcdda169e591cd41c94180b46f3b",
+    "MKL": "0x878370592f9129e14b76558689a4b570ad22678111df775befbfcbc9fb3d90ab",
+    "THL": "0x377adc4848552eb2ea17259be928001923efe12271fef1667e2b784f04a7cf3a",
+    "CELL": "0x2ebb2ccac5e027a87fa0e2e5f656a3a4238d6a48d93ec9b610d570fc0aa0df12",
+    "GUI": "0x0009da434d9b873b5159e8eeed70202ad22dc075867a7793234fbc981b63e119",
+    "doodoo": "0xb27b0c6b60772f0fc804ec1cd3339f552badf9bd1e125a7dd700d8eb11248ef1",
+    "LOON": "0x41dfe1fb3d33d4d9d0b460f03ce1c0a6af6520dd8bdc0f204583c4987faf81de",
+    "amAPT": "0xa259be733b6a759909f92815927fa213904df6540519568692caf0b068fe8e62",
+    "stAPT": "0xb614bfdf9edc39b330bbf9c3c5bcd0473eee2f6d4e21748629cc367869ece627",
+    "thAPT": "0xa0d9d647c5737a5aed08d2cfeb39c31cf901d44bc4aa024eaa7e5e68b804e011",
+    "sthAPT": "0x0a9ce1bddf93b074697ec5e483bc5050bc64cff2acd31e1ccfd8ac8cae5e4abe",
+    "MOD": "0x94ed76d3d66cb0b6e7a3ab81acf830e3a50b8ae3cfb9edc0abea635a11185ff4",
+    "USDT": "0xe568e9322107a5c9ba4cbd05a630a5586aa73e744ada246c3efb0f4ce3e295f3",
+    "WETH": "0xae02f68520afd221a5cd6fda6f5500afedab8d0a2e19a916d6d8bc2b36e758db",
+    "aBTC": "0xf599112bc3a5b6092469890d6a2f353f485a6193c9d36626b480704467d3f4c8",
+    "CHEWY": "0x1fe81b3886ff129d42064f7ee934013de7ef968cb8f47adb5f7210192bcd4a23",
+    "EDOG": "0x1ff8bf54987b665fd0aa8b317a22a60f5927675d35021473a85d720e254ed77e",
+    "MGPT": "0x4c3efb98d8d3662352f331b3465c6df263d1a7e84f002844348519614a5fea30",
+    "DONK": "0x41944cf1d4dac152d692644944e2cc49ee81fafdfb37abd541d06388ec3f7eda",
+    "Cake": "0xad18575b0e51dd056e1e082223c0e014cbfe4b13bc55e92f450585884f4cf951",
+    "TruAPT": "0xaef6a8c3182e076db72d64324617114cacf9a52f28325edc10b483f7f05da0e7",
+    "BAPTMAN": "0xe9c6ae7a056ba49901fcc19ab3fcff0938f882cfd7f2cc5a72eea362d29f5b8f",
+    "WBTC": "0xa64d2d6f5e26daf6a3552f51d4110343b1a8c8046d0a9e72fa4086a337f3236c",
+    "MOVE": "0x96d1ccca420ebc20fc8af6cacb864e44856ca879c6436d4e9be2b0a4b99bf852",
+    "MOVEPUMP": "0xa067de5ce739da1400a92945646f719a0265df6412ddab872cd670052c5cc12f",
+    "APE": "0xfad230e7d9df2baf83a68b6f50217ed3c06da593e766970a885965b43b894a04",
+    "BUBBLES": "0xaca80bdba3a9f58af0c6348f15530e4d891d1c60abca4c2cfb4c1a73bff0f8dd",
+    "CASH": "0xc692943f7b340f02191c5de8dac2f827e0b66b3ed2206206a3526bcb0cae6e40",
+    "sUSDe": "0xb30a694a344edee467d9f82330bbe7c3b89f440a1ecd2da1f3bca266560fce69",
+    "STONE": "0x700e285ee9f4fc9b0e42a6217e329899e1353476bc532a484048008c8bc8e400",
+    "SBTC": "0xef1f3c4126176b1aaff3bf0d460a9344b64ac4bd28ff3e53793d49ded5c2d42f",
+    "MODENG": "0x5dd9b0b5eea4d2bec9c8cabed2f1db7062fb6ed16471fd52de491426718b0d95",
+    "Sidelined": "0x073992b487d517a8fc710acf953248b2045e381e5eb6fd9a92828db64a269530",
+    "wUSDM": "0x08993fd61f611eb186386962edec50c9d72532b3825f1c7d98e883268dbbc501",
+    "CAPTOS": "0x7fa78d58cccc849363df4ed1acd373b1f09397d1c322450101e3b0a4a7a14d80",
+    "PROPS": "0x6dba1728c73363be1bdd4d504844c40fbb893e368ccbeff1d1bd83497dbc756d",
+    "BNB": "0x3fb0cd30095fc85c77eb5cb9edcdbead3cef34e449b1a6f07729282120bc6383",
+    "BUSD": "0xd47b65c45f5260c4f3c5de3f32ddaeabf7eab56c9493a7a955dff7f70ba8afaf",
+    "SLT": "0xd1c452f47abeae87027758de85520a1957a5e5a82cfd709c8d762e904b6fe043",
+    "ETERN": "0x570e7e86130982704afcbb0e860eff90b4af97fb00b69bf7f0f71ddeee5697ee",
+    "DAI": "0x59c3a92ab1565a14d4133eb2a3418604341d37da47698a0e853c7bb22c342c55",
+    "tAPT": "0x1912eb1a5f8f0d4c72c1687eb199b7f9d2df34da5931ec96830c557f7abaa0ad",
+    "ANI": "0x9660042a7c01d776938184278381d24c7009ca385d9a59cf9b22691f97615960",
+    "USDY": "0xf0876baf6f8c37723f0e9d9c1bbad1ccb49324c228bcc906e2f1f5a9e139eda1",
+    "USDD": "0xde368b120e750bbb0d8799356ea23511306ff19edd28eed15fe7b6cc72b04388",
+    "PEPE": "0x08bbc1e07f934be0862be6df1477dbab54d6ccdf594f1569a64fa2941cbfe368",
+    "kAPT": "0x821c94e69bc7ca058c913b7b5e6b0a5c9fd1523d58723a966fb8c1f5ea888105",
+    "CATTOS  ": "0xeeb5ba9616292d315edc8ce36a25b921bab879b2a7088d479d12b0c182bd28c8",
+    "sUSDa": "0xda3e4d44156dce34efda861201eab1164c88b18c49c928a97caa2904be985ebf",
+    "FIABTC": "0x75de592a7e62e6224d13763c392190fda8635ebb79c798a5e9dd0840102f3f93",
+    "AURO": "0xbcff91abababee684b194219ff2113c26e63d57c8872e6fdaf25a41a45fb7197",
+    "USDA": "0x534e4c3dc0f038dab1a8259e89301c4da58779a5d482fb354a41c08147e6b9ec",
+    "xBTC": "0x81214a80d82035a190fcb76b6ff3c0145161c3a9f33d137f2bbaee4cfec8a387",
+    "stkAPT": "0x42556039b88593e768c97ab1a3ab0c6a17230825769304482dff8fdebe4c002b",
+    "USDa": "0xace541cbd9b5d60f38cf545ac27738353f70b4f9b970c37a54cf7acfd19dad76",
+    "AWUSDt": "0x173f3bc501dfe7e4cac8e4463cb277e205e9a299380bc22a87ce455f014f3fb7",
+    "ECHO": "0xb2c7780f0a255a6137e5b39733f5a4c85fe093c549de5c359c1232deef57d1b7",
+    "AMI": "0xb36527754eb54d7ff55daf13bcb54b42b88ec484bd6f0e3b2e0d1db169de6451",
+    "RION": "0x435ad41e7b383cef98899c4e5a22c8dc88ab67b22f95e5663d6c6649298c3a9d"
+  },
+  "detailed_mapping": {
+    "APT": {
+      "address": "0xa",
+      "name": "Aptos Coin",
+      "decimals": 8,
+      "index": 1,
+      "coingeckoId": "aptos",
+      "tags": [
+        "Native",
+        "Verified"
+      ]
+    },
+    "USDt": {
+      "address": "0x357b0b74bc833e95a115ad22604854d6b0fca151cecd94111770e5d6ffc9dc2b",
+      "name": "Tether USD",
+      "decimals": 6,
+      "index": 2,
+      "coingeckoId": "tether",
+      "tags": [
+        "Native",
+        "Verified"
+      ]
+    },
+    "USDC": {
+      "address": "0xbae207659db88bea0cbead6da0ed00aac12edcdda169e591cd41c94180b46f3b",
+      "name": "USDC",
+      "decimals": 6,
+      "index": 4,
+      "coingeckoId": "usd-coin",
+      "tags": [
+        "Native",
+        "Verified"
+      ]
+    },
+    "MKL": {
+      "address": "0x878370592f9129e14b76558689a4b570ad22678111df775befbfcbc9fb3d90ab",
+      "name": "MKL",
+      "decimals": 6,
+      "index": 15,
+      "coingeckoId": "merkle-trade",
+      "tags": [
+        "Native",
+        "Verified"
+      ]
+    },
+    "THL": {
+      "address": "0x377adc4848552eb2ea17259be928001923efe12271fef1667e2b784f04a7cf3a",
+      "name": "Thala Token",
+      "decimals": 8,
+      "index": 40,
+      "coingeckoId": "thala",
+      "tags": [
+        "Native",
+        "Verified"
+      ]
+    },
+    "CELL": {
+      "address": "0x2ebb2ccac5e027a87fa0e2e5f656a3a4238d6a48d93ec9b610d570fc0aa0df12",
+      "name": "CELLANA",
+      "decimals": 8,
+      "index": 45,
+      "coingeckoId": "cellena-finance",
+      "tags": [
+        "Native",
+        "Verified"
+      ]
+    },
+    "GUI": {
+      "address": "0x0009da434d9b873b5159e8eeed70202ad22dc075867a7793234fbc981b63e119",
+      "name": "Gui Inu",
+      "decimals": 6,
+      "index": 50,
+      "coingeckoId": "gui-inu",
+      "tags": [
+        "Meme",
+        "Verified"
+      ]
+    },
+    "doodoo": {
+      "address": "0xb27b0c6b60772f0fc804ec1cd3339f552badf9bd1e125a7dd700d8eb11248ef1",
+      "name": "DooDoo",
+      "decimals": 8,
+      "index": 60,
+      "coingeckoId": "doodoo",
+      "tags": [
+        "Meme",
+        "Verified"
+      ]
+    },
+    "LOON": {
+      "address": "0x41dfe1fb3d33d4d9d0b460f03ce1c0a6af6520dd8bdc0f204583c4987faf81de",
+      "name": "The Loonies",
+      "decimals": 6,
+      "index": 65,
+      "coingeckoId": "",
+      "tags": [
+        "Meme",
+        "Verified"
+      ]
+    },
+    "amAPT": {
+      "address": "0xa259be733b6a759909f92815927fa213904df6540519568692caf0b068fe8e62",
+      "name": "Amnis Aptos Coin",
+      "decimals": 8,
+      "index": 70,
+      "coingeckoId": "amnis-aptos",
+      "tags": [
+        "Native",
+        "Verified"
+      ]
+    },
+    "stAPT": {
+      "address": "0xb614bfdf9edc39b330bbf9c3c5bcd0473eee2f6d4e21748629cc367869ece627",
+      "name": "Staked Aptos Coin",
+      "decimals": 8,
+      "index": 75,
+      "coingeckoId": "amnis-staked-aptos-coin",
+      "tags": [
+        "Native",
+        "Verified"
+      ]
+    },
+    "thAPT": {
+      "address": "0xa0d9d647c5737a5aed08d2cfeb39c31cf901d44bc4aa024eaa7e5e68b804e011",
+      "name": "Thala APT",
+      "decimals": 8,
+      "index": 80,
+      "coingeckoId": "thala-apt",
+      "tags": [
+        "Native",
+        "Verified"
+      ]
+    },
+    "sthAPT": {
+      "address": "0x0a9ce1bddf93b074697ec5e483bc5050bc64cff2acd31e1ccfd8ac8cae5e4abe",
+      "name": "Staked Thala APT",
+      "decimals": 8,
+      "index": 85,
+      "coingeckoId": "staked-thala-apt",
+      "tags": [
+        "Native",
+        "Verified"
+      ]
+    },
+    "MOD": {
+      "address": "0x94ed76d3d66cb0b6e7a3ab81acf830e3a50b8ae3cfb9edc0abea635a11185ff4",
+      "name": "Move Dollar",
+      "decimals": 8,
+      "index": 90,
+      "coingeckoId": "move-dollar",
+      "tags": [
+        "Native",
+        "Verified"
+      ]
+    },
+    "USDT": {
+      "address": "0xe568e9322107a5c9ba4cbd05a630a5586aa73e744ada246c3efb0f4ce3e295f3",
+      "name": "Tether USD",
+      "decimals": 6,
+      "index": 93,
+      "coingeckoId": "layerzero-bridged-usdt-aptos",
+      "tags": [
+        "Bridged",
+        "Verified"
+      ]
+    },
+    "WETH": {
+      "address": "0xae02f68520afd221a5cd6fda6f5500afedab8d0a2e19a916d6d8bc2b36e758db",
+      "name": "Wrapped Ether",
+      "decimals": 6,
+      "index": 94,
+      "coingeckoId": "layerzero-bridged-weth-aptos",
+      "tags": [
+        "Bridged",
+        "Verified"
+      ]
+    },
+    "aBTC": {
+      "address": "0xf599112bc3a5b6092469890d6a2f353f485a6193c9d36626b480704467d3f4c8",
+      "name": "aBTC",
+      "decimals": 10,
+      "index": 97,
+      "coingeckoId": "abtc",
+      "tags": [
+        "Bridged",
+        "Verified"
+      ]
+    },
+    "CHEWY": {
+      "address": "0x1fe81b3886ff129d42064f7ee934013de7ef968cb8f47adb5f7210192bcd4a23",
+      "name": "Chewy",
+      "decimals": 0,
+      "index": 105,
+      "coingeckoId": "chewy-token",
+      "tags": [
+        "Meme",
+        "Verified"
+      ]
+    },
+    "EDOG": {
+      "address": "0x1ff8bf54987b665fd0aa8b317a22a60f5927675d35021473a85d720e254ed77e",
+      "name": "EDOG",
+      "decimals": 6,
+      "index": 108,
+      "coingeckoId": "",
+      "tags": [
+        "Meme",
+        "Verified"
+      ]
+    },
+    "MGPT": {
+      "address": "0x4c3efb98d8d3662352f331b3465c6df263d1a7e84f002844348519614a5fea30",
+      "name": "MOVEGPT",
+      "decimals": 8,
+      "index": 115,
+      "coingeckoId": "movegpt",
+      "tags": [
+        "Native",
+        "Verified"
+      ]
+    },
+    "DONK": {
+      "address": "0x41944cf1d4dac152d692644944e2cc49ee81fafdfb37abd541d06388ec3f7eda",
+      "name": "Donk",
+      "decimals": 8,
+      "index": 120,
+      "coingeckoId": "",
+      "tags": [
+        "Meme",
+        "Verified"
+      ]
+    },
+    "Cake": {
+      "address": "0xad18575b0e51dd056e1e082223c0e014cbfe4b13bc55e92f450585884f4cf951",
+      "name": "PancakeSwap Token",
+      "decimals": 8,
+      "index": 130,
+      "coingeckoId": "pancakeswap-token",
+      "tags": [
+        "Native",
+        "Verified"
+      ]
+    },
+    "TruAPT": {
+      "address": "0xaef6a8c3182e076db72d64324617114cacf9a52f28325edc10b483f7f05da0e7",
+      "name": "TruAPT coin",
+      "decimals": 8,
+      "index": 135,
+      "coingeckoId": "trufin-staked-apt",
+      "tags": [
+        "Native",
+        "Verified"
+      ]
+    },
+    "BAPTMAN": {
+      "address": "0xe9c6ae7a056ba49901fcc19ab3fcff0938f882cfd7f2cc5a72eea362d29f5b8f",
+      "name": "BAPTMAN",
+      "decimals": 9,
+      "index": 140,
+      "coingeckoId": "",
+      "tags": [
+        "Meme",
+        "Verified"
+      ]
+    },
+    "WBTC": {
+      "address": "0xa64d2d6f5e26daf6a3552f51d4110343b1a8c8046d0a9e72fa4086a337f3236c",
+      "name": "Wrapped BTC",
+      "decimals": 6,
+      "index": 145,
+      "coingeckoId": "layerzero-bridged-wbtc-aptos",
+      "tags": [
+        "Bridged",
+        "Verified"
+      ]
+    },
+    "MOVE": {
+      "address": "0x96d1ccca420ebc20fc8af6cacb864e44856ca879c6436d4e9be2b0a4b99bf852",
+      "name": "BlueMove",
+      "decimals": 8,
+      "index": 150,
+      "coingeckoId": "bluemove",
+      "tags": [
+        "Native",
+        "Verified"
+      ]
+    },
+    "MOVEPUMP": {
+      "address": "0xa067de5ce739da1400a92945646f719a0265df6412ddab872cd670052c5cc12f",
+      "name": "MovePump",
+      "decimals": 6,
+      "index": 155,
+      "coingeckoId": "",
+      "tags": [
+        "Meme",
+        "Verified"
+      ]
+    },
+    "APE": {
+      "address": "0xfad230e7d9df2baf83a68b6f50217ed3c06da593e766970a885965b43b894a04",
+      "name": "APETOS",
+      "decimals": 8,
+      "index": 165,
+      "coingeckoId": "",
+      "tags": [
+        "Meme",
+        "Verified"
+      ]
+    },
+    "BUBBLES": {
+      "address": "0xaca80bdba3a9f58af0c6348f15530e4d891d1c60abca4c2cfb4c1a73bff0f8dd",
+      "name": "BUBBLES",
+      "decimals": 8,
+      "index": 170,
+      "coingeckoId": "",
+      "tags": [
+        "Meme",
+        "Verified"
+      ]
+    },
+    "CASH": {
+      "address": "0xc692943f7b340f02191c5de8dac2f827e0b66b3ed2206206a3526bcb0cae6e40",
+      "name": "CASH",
+      "decimals": 6,
+      "index": 190,
+      "coingeckoId": "cash-2",
+      "tags": [
+        "Meme",
+        "Verified"
+      ]
+    },
+    "sUSDe": {
+      "address": "0xb30a694a344edee467d9f82330bbe7c3b89f440a1ecd2da1f3bca266560fce69",
+      "name": "",
+      "decimals": 6,
+      "index": 194,
+      "coingeckoId": "ethena-staked-usde",
+      "tags": [
+        "Bridged",
+        "Verified"
+      ]
+    },
+    "STONE": {
+      "address": "0x700e285ee9f4fc9b0e42a6217e329899e1353476bc532a484048008c8bc8e400",
+      "name": "StakeStone Ether",
+      "decimals": 8,
+      "index": 200,
+      "coingeckoId": "",
+      "tags": [
+        "Bridged",
+        "Verified"
+      ]
+    },
+    "SBTC": {
+      "address": "0xef1f3c4126176b1aaff3bf0d460a9344b64ac4bd28ff3e53793d49ded5c2d42f",
+      "name": "StakeStone Bitcoin",
+      "decimals": 8,
+      "index": 201,
+      "coingeckoId": "",
+      "tags": [
+        "Bridged",
+        "Verified"
+      ]
+    },
+    "MODENG": {
+      "address": "0x5dd9b0b5eea4d2bec9c8cabed2f1db7062fb6ed16471fd52de491426718b0d95",
+      "name": "Mo Deng",
+      "decimals": 6,
+      "index": 299,
+      "coingeckoId": "",
+      "tags": [
+        "Meme",
+        "Verified"
+      ]
+    },
+    "Sidelined": {
+      "address": "0x073992b487d517a8fc710acf953248b2045e381e5eb6fd9a92828db64a269530",
+      "name": "sidelined?",
+      "decimals": 6,
+      "index": 300,
+      "coingeckoId": "",
+      "tags": [
+        "Meme",
+        "Recognized"
+      ]
+    },
+    "wUSDM": {
+      "address": "0x08993fd61f611eb186386962edec50c9d72532b3825f1c7d98e883268dbbc501",
+      "name": "Wrap USDM",
+      "decimals": 8,
+      "index": 301,
+      "coingeckoId": "",
+      "tags": [
+        "Bridged",
+        "Verified"
+      ]
+    },
+    "CAPTOS": {
+      "address": "0x7fa78d58cccc849363df4ed1acd373b1f09397d1c322450101e3b0a4a7a14d80",
+      "name": "captos",
+      "decimals": 6,
+      "index": 302,
+      "coingeckoId": "",
+      "tags": [
+        "Meme",
+        "Verified"
+      ]
+    },
+    "PROPS": {
+      "address": "0x6dba1728c73363be1bdd4d504844c40fbb893e368ccbeff1d1bd83497dbc756d",
+      "name": "Propbase",
+      "decimals": 8,
+      "index": 336,
+      "coingeckoId": "",
+      "tags": [
+        "Native",
+        "Verified"
+      ]
+    },
+    "BNB": {
+      "address": "0x3fb0cd30095fc85c77eb5cb9edcdbead3cef34e449b1a6f07729282120bc6383",
+      "name": "Binance Coin",
+      "decimals": 8,
+      "index": 354,
+      "coingeckoId": "",
+      "tags": [
+        "Bridged",
+        "Verified"
+      ]
+    },
+    "BUSD": {
+      "address": "0xd47b65c45f5260c4f3c5de3f32ddaeabf7eab56c9493a7a955dff7f70ba8afaf",
+      "name": "Binance USD",
+      "decimals": 8,
+      "index": 370,
+      "coingeckoId": "",
+      "tags": [
+        "Bridged",
+        "Recognized"
+      ]
+    },
+    "SLT": {
+      "address": "0xd1c452f47abeae87027758de85520a1957a5e5a82cfd709c8d762e904b6fe043",
+      "name": "Sui Launch Token",
+      "decimals": 8,
+      "index": 100000,
+      "coingeckoId": "",
+      "tags": [
+        "Native",
+        "Recognized"
+      ]
+    },
+    "ETERN": {
+      "address": "0x570e7e86130982704afcbb0e860eff90b4af97fb00b69bf7f0f71ddeee5697ee",
+      "name": "Eternal Token",
+      "decimals": 8,
+      "index": 100000,
+      "coingeckoId": "",
+      "tags": [
+        "Native",
+        "Recognized"
+      ]
+    },
+    "DAI": {
+      "address": "0x59c3a92ab1565a14d4133eb2a3418604341d37da47698a0e853c7bb22c342c55",
+      "name": "Dai Stablecoin",
+      "decimals": 8,
+      "index": 100000,
+      "coingeckoId": "",
+      "tags": [
+        "Bridged",
+        "Recognized"
+      ]
+    },
+    "tAPT": {
+      "address": "0x1912eb1a5f8f0d4c72c1687eb199b7f9d2df34da5931ec96830c557f7abaa0ad",
+      "name": "Tortuga Staked APT",
+      "decimals": 8,
+      "index": 200000,
+      "coingeckoId": "tortuga-staked-aptos",
+      "tags": [
+        "Native",
+        "Verified"
+      ]
+    },
+    "ANI": {
+      "address": "0x9660042a7c01d776938184278381d24c7009ca385d9a59cf9b22691f97615960",
+      "name": "AnimeSwap Coin",
+      "decimals": 8,
+      "index": 200000,
+      "coingeckoId": "animeswap",
+      "tags": [
+        "Native",
+        "Recognized"
+      ]
+    },
+    "USDY": {
+      "address": "0xf0876baf6f8c37723f0e9d9c1bbad1ccb49324c228bcc906e2f1f5a9e139eda1",
+      "name": "Ondo US Dollar Yield",
+      "decimals": 6,
+      "index": 200000,
+      "coingeckoId": "ondo-us-dollar-yield",
+      "tags": [
+        "Native",
+        "Verified"
+      ]
+    },
+    "USDD": {
+      "address": "0xde368b120e750bbb0d8799356ea23511306ff19edd28eed15fe7b6cc72b04388",
+      "name": "Decentralized USD",
+      "decimals": 6,
+      "index": 200000,
+      "coingeckoId": "",
+      "tags": [
+        "Native",
+        "Recognized"
+      ]
+    },
+    "PEPE": {
+      "address": "0x08bbc1e07f934be0862be6df1477dbab54d6ccdf594f1569a64fa2941cbfe368",
+      "name": "Pepe",
+      "decimals": 6,
+      "index": 200000,
+      "coingeckoId": "",
+      "tags": [
+        "Meme",
+        "Verified"
+      ]
+    },
+    "kAPT": {
+      "address": "0x821c94e69bc7ca058c913b7b5e6b0a5c9fd1523d58723a966fb8c1f5ea888105",
+      "name": "Kofi APT",
+      "decimals": 8,
+      "index": null,
+      "coingeckoId": "",
+      "tags": [
+        "Native",
+        "Verified"
+      ]
+    },
+    "CATTOS  ": {
+      "address": "0xeeb5ba9616292d315edc8ce36a25b921bab879b2a7088d479d12b0c182bd28c8",
+      "name": "Defi Cattos",
+      "decimals": 8,
+      "index": null,
+      "coingeckoId": "",
+      "tags": [
+        "Native",
+        "Verified"
+      ]
+    },
+    "sUSDa": {
+      "address": "0xda3e4d44156dce34efda861201eab1164c88b18c49c928a97caa2904be985ebf",
+      "name": "",
+      "decimals": 8,
+      "index": null,
+      "coingeckoId": "",
+      "tags": [
+        "Native",
+        "Verified"
+      ]
+    },
+    "FIABTC": {
+      "address": "0x75de592a7e62e6224d13763c392190fda8635ebb79c798a5e9dd0840102f3f93",
+      "name": "Fiamma BTC",
+      "decimals": 8,
+      "index": null,
+      "coingeckoId": "",
+      "tags": [
+        "Native",
+        "Verified"
+      ]
+    },
+    "AURO": {
+      "address": "0xbcff91abababee684b194219ff2113c26e63d57c8872e6fdaf25a41a45fb7197",
+      "name": "AURO Finance",
+      "decimals": 8,
+      "index": null,
+      "coingeckoId": "",
+      "tags": [
+        "Native",
+        "Verified"
+      ]
+    },
+    "USDA": {
+      "address": "0x534e4c3dc0f038dab1a8259e89301c4da58779a5d482fb354a41c08147e6b9ec",
+      "name": "AURO USDA",
+      "decimals": 8,
+      "index": null,
+      "coingeckoId": "",
+      "tags": [
+        "Native",
+        "Verified"
+      ]
+    },
+    "xBTC": {
+      "address": "0x81214a80d82035a190fcb76b6ff3c0145161c3a9f33d137f2bbaee4cfec8a387",
+      "name": "OKX Wrapped BTC",
+      "decimals": 8,
+      "index": null,
+      "coingeckoId": "",
+      "tags": [
+        "Native",
+        "Verified"
+      ]
+    },
+    "stkAPT": {
+      "address": "0x42556039b88593e768c97ab1a3ab0c6a17230825769304482dff8fdebe4c002b",
+      "name": "Staked KofiAPT",
+      "decimals": 8,
+      "index": null,
+      "coingeckoId": "",
+      "tags": [
+        "Native",
+        "Verified"
+      ]
+    },
+    "USDa": {
+      "address": "0xace541cbd9b5d60f38cf545ac27738353f70b4f9b970c37a54cf7acfd19dad76",
+      "name": "",
+      "decimals": 8,
+      "index": null,
+      "coingeckoId": "",
+      "tags": null
+    },
+    "AWUSDt": {
+      "address": "0x173f3bc501dfe7e4cac8e4463cb277e205e9a299380bc22a87ce455f014f3fb7",
+      "name": "Aries Wrapped Tether USD",
+      "decimals": 6,
+      "index": null,
+      "coingeckoId": "",
+      "tags": null
+    },
+    "ECHO": {
+      "address": "0xb2c7780f0a255a6137e5b39733f5a4c85fe093c549de5c359c1232deef57d1b7",
+      "name": "Echo",
+      "decimals": 8,
+      "index": null,
+      "coingeckoId": "",
+      "tags": [
+        "Native",
+        "Verified"
+      ]
+    },
+    "AMI": {
+      "address": "0xb36527754eb54d7ff55daf13bcb54b42b88ec484bd6f0e3b2e0d1db169de6451",
+      "name": "AMNIS",
+      "decimals": 8,
+      "index": null,
+      "coingeckoId": "",
+      "tags": [
+        "Native",
+        "Verified"
+      ]
+    },
+    "RION": {
+      "address": "0x435ad41e7b383cef98899c4e5a22c8dc88ab67b22f95e5663d6c6649298c3a9d",
+      "name": "Hyperion",
+      "decimals": 6,
+      "index": null,
+      "coingeckoId": "",
+      "tags": [
+        "Native",
+        "Verified"
+      ]
+    }
+  },
+  "statistics": {
+    "total_entries": 123,
+    "unique_symbols": 61,
+    "generated_at": "2025-08-31T09:59:17.002Z"
+  }
+}
