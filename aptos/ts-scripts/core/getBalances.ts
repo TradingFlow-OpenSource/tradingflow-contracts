@@ -52,84 +52,35 @@ async function getBalances(userAddress?: string): Promise<Record<string, Balance
       console.log(JSON.stringify(resource, null, 2));
       
       // 从资源中提取余额信息
-      if (resource && 'data' in resource) {
-        const data = resource.data as any;
-        const result: Record<string, BalanceInfo> = {};
+      const data = resource as any;
+      const result: Record<string, BalanceInfo> = {};
+      
+      if (data.balances && data.balances.data && Array.isArray(data.balances.data)) {
+        console.log("\n用户余额:");
+        console.log("----------------------------------------");
         
-        if (data.balances && Array.isArray(data.balances.data)) {
-          console.log("\n用户余额:");
-          console.log("----------------------------------------");
-          
-          // 遍历并打印每种代币的余额
-          for (const entry of data.balances.data) {
-            if (entry && entry.key && entry.value) {
-              const metadataObjectId = entry.key;
-              const amount = entry.value;
-              
-              // 尝试获取代币的元数据
-              try {
-                const metadata = await aptos.getAccountResource({
-                  accountAddress: metadataObjectId,
-                  resourceType: "0x1::fungible_asset::Metadata",
-                });
-                
-                if (metadata && 'data' in metadata) {
-                  const metaData = metadata.data as any;
-                  const tokenMetadata: TokenMetadata = {
-                    name: metaData.name || '未知',
-                    symbol: metaData.symbol || '未知',
-                    decimals: metaData.decimals || 0,
-                  };
-                  
-                  if (metaData.supply) {
-                    tokenMetadata.supply = metaData.supply.toString();
-                  }
-                  
-                  // 根据元数据生成代币类型字符串
-                  // 注意：这里的转换只是一个估计，实际上需要从元数据中获取准确的类型信息
-                  const coinType = `${metadataObjectId}::${metaData.symbol}`;
-                  
-                  // 格式化输出
-                  console.log(`\n代币类型: ${coinType}`);
-                  console.log(`元数据对象ID: ${metadataObjectId}`);
-                  console.log(`余额: ${amount}`);
-                  console.log(`名称: ${tokenMetadata.name}`);
-                  console.log(`符号: ${tokenMetadata.symbol}`);
-                  console.log(`小数位: ${tokenMetadata.decimals}`);
-                  if (tokenMetadata.supply) {
-                    console.log(`总供应量: ${tokenMetadata.supply}`);
-                  }
-                  
-                  result[coinType] = { 
-                    amount: amount.toString(),
-                    metadata: tokenMetadata,
-                    metadataObjectId: metadataObjectId 
-                  };
-                  
-                  console.log(`----------------------------------------`);
-                }
-              } catch (error) {
-                console.log(`\n元数据对象ID: ${metadataObjectId}`);
-                console.log(`余额: ${amount}`);
-                console.log(`无法获取代币元数据`);
-                console.log(`----------------------------------------`);
-                
-                // 即使无法获取元数据，也将元数据对象ID作为键存储
-                result[metadataObjectId] = { 
-                  amount: amount.toString(),
-                  metadataObjectId: metadataObjectId 
-                };
-              }
-            }
+        // 遍历并打印每种代币的余额
+        for (const entry of data.balances.data) {
+          if (entry && entry.key && entry.value) {
+            const metadataObjectId = entry.key.inner; // 注意这里需要访问 inner 属性
+            const amount = entry.value;
+            
+            // 直接使用 metadataObjectId 作为键，简化处理
+            console.log(`\n元数据对象ID: ${metadataObjectId}`);
+            console.log(`余额: ${amount}`);
+            console.log(`----------------------------------------`);
+            
+            result[metadataObjectId] = { 
+              amount: amount.toString(),
+              metadataObjectId: metadataObjectId 
+            };
           }
-          
-          console.log("\n使用说明:");
-          console.log("存款命令: pnpm ts-node core/depositCoins.ts <代币类型> <金额>");
-          console.log("提款命令: pnpm ts-node core/withdrawCoins.ts <代币类型> <金额>");
-          console.log("例如: pnpm ts-node core/depositCoins.ts 0x1::aptos_coin::AptosCoin 1000000");
-        } else {
-          console.log("用户没有余额记录");
         }
+        
+        console.log("\n使用说明:");
+        console.log("存款命令: pnpm ts-node core/depositCoins.ts <代币类型> <金额>");
+        console.log("提款命令: pnpm ts-node core/withdrawCoins.ts <代币类型> <金额>");
+        console.log("例如: pnpm ts-node core/depositCoins.ts 0x1::aptos_coin::AptosCoin 1000000");
         
         return result;
       } else {

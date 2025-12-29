@@ -62,7 +62,7 @@ Our contract fully complies with Aptos standards:
 
 During development, we encountered and overcame several technical challenges:
 
-1. **Optimizing Gas Efficiency**: 
+1. **Optimizing Gas Efficiency**:
    - Challenge: Initial implementations resulted in high gas costs for complex operations.
    - Solution: Refactored storage patterns and optimized transaction logic to reduce gas consumption by approximately 40%.
 
@@ -156,7 +156,7 @@ As we move forward to Milestone 2, our focus will be on:
 4. Enhancing the user interface for improved accessibility and user experience
 5. Expanding integrations with other DeFi protocols on Aptos
 
-The TradingFlow team is committed to building a comprehensive asset management solution that empowers users to participate in DeFi with confidence and efficiency. We are grateful for the support of the Aptos Movemaker Grants program and look forward to continuing our journey of innovation on the Aptos blockchain. Our product is accessible at http://tradingflow.pro/ and our contract repository is available at https://github.com/TheCleopatra/tradingflow-aptos-contract. For a video demonstration of our platform in action, please visit our [demo on X](https://x.com/TradingFlowAI/status/1931265401767567488).
+The TradingFlow team is committed to building a comprehensive asset management solution that empowers users to participate in DeFi with confidence and efficiency. We are grateful for the support of the Aptos Movemaker Grants program and look forward to continuing our journey of innovation on the Aptos blockchain. Our product is accessible at http://tradingflows.ai/ and our contract repository is available at https://github.com/TheCleopatra/tradingflow-aptos-contract. For a video demonstration of our platform in action, please visit our [demo on X](https://x.com/TradingFlowAI/status/1931265401767567488).
 
 ---
 

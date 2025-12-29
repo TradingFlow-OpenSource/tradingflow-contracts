@@ -2,6 +2,10 @@ import { Network } from "@aptos-labs/ts-sdk";
 import * as dotenv from "dotenv";
 
 dotenv.config({ path: "../.env" });
+// 如果上级目录没有.env文件，尝试当前aptos目录下的.env
+if (!process.env.ADMIN_PRIVATE_KEY || !process.env.USER_PRIVATE_KEY) {
+    dotenv.config({ path: "./.env" });
+}
 
 // 合约地址
 export const CONTRACT_ADDRESS = process.env.APTOS_FACTORY_ADDRESS || "";
