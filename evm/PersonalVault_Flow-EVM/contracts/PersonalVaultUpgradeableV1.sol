@@ -8,20 +8,31 @@ import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol"
 import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-// 使用我们自己创建的接口和库文件
+// Using our own interface and library files
 import "./interfaces/IUniswapV2Router02.sol";
 import "./interfaces/IUniswapV2Factory.sol";
 import "./libraries/UniswapV2Library.sol";
 
-// 使用SafeERC20替代TransferHelper
+// Using SafeERC20 instead of TransferHelper
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 /**
- * @title PersonalVaultUpgradeableUniV2
- * @notice UUPS可升级的个人金库合约，使用Uniswap V2/PunchSwap V2进行交换，支持初始化和升级
+ * @title PersonalVaultUpgradeableV1
+ * @author TradingFlow
+ * @notice UUPS upgradeable personal vault contract with initialization and upgrade support
+ * 
+ * @dev Contract Version: V1
+ *      Target Chain: Flow EVM
+ *      DEX Integration: PunchSwap V2 (Uniswap V2 Fork)
+ *      Swap Router: 0xF9678db1CE83f6f51E5df348E2Cc842Ca51EfEc1
+ *      WFLOW: 0xd3bF53DAC106A0290B0483EcBC89d40FcC961f3e
+ * 
+ * @dev Upgrade Notes:
+ *      - Uses UUPS proxy pattern
+ *      - Upgrade permission: onlyOwner
+ *      - Storage layout must remain backward compatible
  */
-contract PersonalVaultUpgradeableUniV2 is Initializable, OwnableUpgradeable, ReentrancyGuardUpgradeable, AccessControlUpgradeable, UUPSUpgradeable {
-    // 使用SafeERC20库
+contract PersonalVaultUpgradeableV1 is Initializable, OwnableUpgradeable, ReentrancyGuardUpgradeable, AccessControlUpgradeable, UUPSUpgradeable {
     using SafeERC20 for IERC20;
 
     // --- Roles ---
@@ -30,9 +41,9 @@ contract PersonalVaultUpgradeableUniV2 is Initializable, OwnableUpgradeable, Ree
     address public investor;
     IUniswapV2Router02 public swapRouter;
 
-    // --- 原生代币相关 ---
+    // --- Native Token Related ---
     address public constant NATIVE_TOKEN = address(0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE);
-    address public WRAPPED_NATIVE; // WETH/WFLOW 地址
+    address public WRAPPED_NATIVE; // WFLOW address
 
     // --- Events ---
     event VaultInitialized(address indexed owner, uint256 timestamp);
@@ -52,24 +63,53 @@ contract PersonalVaultUpgradeableUniV2 is Initializable, OwnableUpgradeable, Ree
 
     // --- Balances ---
     mapping(address => uint256) public balances; // token address => amount
-    address[] private tokenList; // 存储所有已添加的代币地址
-    mapping(address => bool) private tokenExists; // 快速检查代币是否已添加
+    address[] private tokenList; // stores all added token addresses
+    mapping(address => bool) private tokenExists; // quick check if token is added
 
-    function initialize(address _investor, address admin, address bot, address _swapRouter, address _wrappedNative, address factory) public initializer {
-        __Ownable_init(admin);
+    /**
+     * @notice Initialize the vault with separated owner and admin
+     * @param _investor The investor address (can deposit/withdraw)
+     * @param _owner The owner address (can upgrade contract via UUPS)
+     * @param _admin The admin address (has ADMIN_ROLE for settings)
+     * @param bot The bot address (has ORACLE_ROLE for trading)
+     * @param _swapRouter The swap router address
+     * @param _wrappedNative The wrapped native token address (WFLOW)
+     * @param factory The factory contract address
+     */
+    function initialize(
+        address _investor, 
+        address _owner, 
+        address _admin, 
+        address bot, 
+        address _swapRouter, 
+        address _wrappedNative, 
+        address factory
+    ) public initializer {
+        __Ownable_init(_owner);  // Owner for UUPS upgrades
         __ReentrancyGuard_init();
         __AccessControl_init();
         __UUPSUpgradeable_init();
+
+        require(_investor != address(0), "Invalid investor");
+        require(_owner != address(0), "Invalid owner");
+        require(_admin != address(0), "Invalid admin");
+        require(_swapRouter != address(0), "Invalid router");
+        require(_wrappedNative != address(0), "Invalid wrapped native");
 
         investor = _investor;
         swapRouter = IUniswapV2Router02(_swapRouter);
         WRAPPED_NATIVE = _wrappedNative;
 
-        _grantRole(DEFAULT_ADMIN_ROLE, admin);
-        _grantRole(ADMIN_ROLE, admin);
+        // Grant roles - Owner gets DEFAULT_ADMIN_ROLE to manage all roles
+        _grantRole(DEFAULT_ADMIN_ROLE, _owner);
+        
+        // Admin gets ADMIN_ROLE for settings
+        _grantRole(ADMIN_ROLE, _admin);
+        
+        // Bot gets ORACLE_ROLE for trading
         _grantRole(ORACLE_ROLE, bot);
 
-        // 授予工厂合约管理员权限，以便它可以管理角色
+        // Grant factory contract DEFAULT_ADMIN_ROLE so it can manage roles
         _grantRole(DEFAULT_ADMIN_ROLE, factory);
 
         emit VaultInitialized(_investor, block.timestamp);
@@ -78,7 +118,7 @@ contract PersonalVaultUpgradeableUniV2 is Initializable, OwnableUpgradeable, Ree
     function _authorizeUpgrade(address newImplementation) internal override onlyOwner {}
 
 
-    // --- 接收原生代币 ---
+    // --- Receive Native Token ---
     receive() external payable {
         if (msg.sender == investor) {
             balances[NATIVE_TOKEN] += msg.value;
@@ -94,7 +134,7 @@ contract PersonalVaultUpgradeableUniV2 is Initializable, OwnableUpgradeable, Ree
         IERC20(token).transferFrom(msg.sender, address(this), amount);
         balances[token] += amount;
 
-        // 如果是新代币，添加到代币列表
+        // Add to token list if new token
         if (!tokenExists[token]) {
             tokenList.push(token);
             tokenExists[token] = true;
@@ -109,7 +149,7 @@ contract PersonalVaultUpgradeableUniV2 is Initializable, OwnableUpgradeable, Ree
         require(msg.value > 0, "Amount=0");
         balances[NATIVE_TOKEN] += msg.value;
 
-        // 如果是新代币，添加到代币列表
+        // Add to token list if new token
         if (!tokenExists[NATIVE_TOKEN]) {
             tokenList.push(NATIVE_TOKEN);
             tokenExists[NATIVE_TOKEN] = true;
@@ -138,30 +178,34 @@ contract PersonalVaultUpgradeableUniV2 is Initializable, OwnableUpgradeable, Ree
         emit UserWithdraw(msg.sender, NATIVE_TOKEN, amount, block.timestamp);
     }
 
-    // --- UniswapV2/PunchSwapV2 Swap: Exact Input (固定输入换最多输出) ---
+    /**
+     * @notice PunchSwap V2 Swap: Exact Input (fixed input for maximum output)
+     * @dev Uses PunchSwap V2 Router (Uniswap V2 Fork) for swap
+     *      Router address: 0xF9678db1CE83f6f51E5df348E2Cc842Ca51EfEc1
+     */
     function swapExactInputSingle(
         address tokenIn,
         address tokenOut,
         uint256 amountIn,
         uint256 amountOutMinimum,
         address feeRecipient,
-        uint256 feeRate  // 费率，按百万分之一为基本单位 (1 = 0.0001%)
+        uint256 feeRate  // fee rate in millionths (1 = 0.0001%)
     ) external onlyRole(ORACLE_ROLE) nonReentrant returns (uint256 amountOut) {
         require(balances[tokenIn] >= amountIn, "Insufficient balance");
-        require(feeRate <= 1000000, "Fee rate too high"); // 最大费率100%
+        require(feeRate <= 1000000, "Fee rate too high"); // max fee rate 100%
         balances[tokenIn] -= amountIn;
 
-        // 设置交易截止时间
+        // Set transaction deadline
         uint deadline = block.timestamp + 600;
 
-        // 处理输入代币
+        // Handle input token
         if (tokenIn == NATIVE_TOKEN) {
-            // 如果输入是原生代币，使用swapExactETHForTokens
+            // If input is native token, use swapExactETHForTokens
             address[] memory path = new address[](2);
-            path[0] = WRAPPED_NATIVE; // 路径起点是WETH/WFLOW
+            path[0] = WRAPPED_NATIVE; // path starts with WFLOW
             path[1] = tokenOut;
 
-            // 执行交换
+            // Execute swap
             uint[] memory amounts = swapRouter.swapExactETHForTokens{value: amountIn}(
                 amountOutMinimum,
                 path,
@@ -169,18 +213,18 @@ contract PersonalVaultUpgradeableUniV2 is Initializable, OwnableUpgradeable, Ree
                 deadline
             );
 
-            // 获取输出金额
+            // Get output amount
             amountOut = amounts[1];
         } else if (tokenOut == NATIVE_TOKEN) {
-            // 如果输出是原生代币，使用swapExactTokensForETH
+            // If output is native token, use swapExactTokensForETH
             address[] memory path = new address[](2);
             path[0] = tokenIn;
-            path[1] = WRAPPED_NATIVE; // 路径终点是WETH/WFLOW
+            path[1] = WRAPPED_NATIVE; // path ends with WFLOW
 
-            // 批准路由器使用代币
+            // Approve router to use tokens
             IERC20(tokenIn).approve(address(swapRouter), amountIn);
 
-            // 执行交换
+            // Execute swap
             uint[] memory amounts = swapRouter.swapExactTokensForETH(
                 amountIn,
                 amountOutMinimum,
@@ -189,23 +233,23 @@ contract PersonalVaultUpgradeableUniV2 is Initializable, OwnableUpgradeable, Ree
                 deadline
             );
 
-            // 获取输出金额
+            // Get output amount
             amountOut = amounts[1];
         } else {
-            // ERC20代币之间的交换
-            // 批准路由器使用代币
+            // Swap between ERC20 tokens
+            // Approve router to use tokens
             IERC20(tokenIn).approve(address(swapRouter), amountIn);
 
-            // 首先尝试直接路径
+            // First try direct path
             address[] memory directPath = new address[](2);
             directPath[0] = tokenIn;
             directPath[1] = tokenOut;
 
-            // 检查直接交易对是否存在
+            // Check if direct pair exists
             address directPair = IUniswapV2Factory(swapRouter.factory()).getPair(tokenIn, tokenOut);
 
             if (directPair != address(0)) {
-                // 直接路径存在，使用两跳交换
+                // Direct path exists, use two-hop swap
                 uint[] memory amounts = swapRouter.swapExactTokensForTokens(
                     amountIn,
                     amountOutMinimum,
@@ -215,13 +259,13 @@ contract PersonalVaultUpgradeableUniV2 is Initializable, OwnableUpgradeable, Ree
                 );
                 amountOut = amounts[1];
             } else {
-                // 直接路径不存在，尝试通过WRAPPED_NATIVE路由
+                // Direct path doesn't exist, try routing through WRAPPED_NATIVE
                 address[] memory routedPath = new address[](3);
                 routedPath[0] = tokenIn;
                 routedPath[1] = WRAPPED_NATIVE;
                 routedPath[2] = tokenOut;
 
-                // 验证路由路径存在
+                // Verify routed path exists
                 address pair1 = IUniswapV2Factory(swapRouter.factory()).getPair(tokenIn, WRAPPED_NATIVE);
                 address pair2 = IUniswapV2Factory(swapRouter.factory()).getPair(WRAPPED_NATIVE, tokenOut);
                 require(pair1 != address(0) && pair2 != address(0), "No valid trading route");
@@ -233,34 +277,34 @@ contract PersonalVaultUpgradeableUniV2 is Initializable, OwnableUpgradeable, Ree
                     address(this),
                     deadline
                 );
-                amountOut = amounts[2]; // 三跳路径的最终输出
+                amountOut = amounts[2]; // final output of three-hop path
             }
         }
 
-        // 计算费用金额（按百万分之一为基本单位）
+        // Calculate fee amount (in millionths)
         uint256 feeAmount = (amountOut * feeRate) / 1000000;
         uint256 userAmount = amountOut - feeAmount;
 
-        // 转账费用给收费人（如果费用大于0且收费人不是零地址）
+        // Transfer fee to recipient (if fee > 0 and recipient is not zero address)
         if (feeAmount > 0 && feeRecipient != address(0)) {
             if (tokenOut == NATIVE_TOKEN) {
-                // 原生代币费用转账
+                // Native token fee transfer
                 (bool success, ) = feeRecipient.call{value: feeAmount}("");
                 require(success, "Fee transfer failed");
             } else {
-                // ERC20代币费用转账
+                // ERC20 token fee transfer
                 IERC20(tokenOut).transfer(feeRecipient, feeAmount);
             }
         } else {
-            // 如果没有费用或收费人为零地址，用户获得全部输出
+            // If no fee or recipient is zero address, user gets all output
             userAmount = amountOut;
             feeAmount = 0;
         }
 
-        // 更新用户余额（扣除费用后的金额）
+        // Update user balance (amount after fee deduction)
         balances[tokenOut] += userAmount;
 
-        // 如果输出代币是新代币，添加到代币列表
+        // Add output token to list if new
         if (!tokenExists[tokenOut]) {
             tokenList.push(tokenOut);
             tokenExists[tokenOut] = true;
@@ -286,8 +330,8 @@ contract PersonalVaultUpgradeableUniV2 is Initializable, OwnableUpgradeable, Ree
 
     // --- Get Tokens ---
     /**
-     * @notice 获取金库中所有已添加的代币地址列表
-     * @return 代币地址数组
+     * @notice Get list of all token addresses added to the vault
+     * @return Array of token addresses
      */
     function getTokens() external view returns (address[] memory) {
         return tokenList;

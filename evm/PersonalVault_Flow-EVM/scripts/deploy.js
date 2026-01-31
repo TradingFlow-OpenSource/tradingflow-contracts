@@ -1,34 +1,42 @@
-// 部署PersonalVaultUpgradeableUniV2和PersonalVaultFactoryUniV2合约
+/**
+ * Deploy PersonalVaultUpgradeableV1 and PersonalVaultFactoryV1 contracts
+ * 
+ * Contract Version: V1
+ * Target Chain: Flow EVM
+ * DEX Integration: PunchSwap V2 (Uniswap V2 Fork)
+ * Swap Router: 0xF9678db1CE83f6f51E5df348E2Cc842Ca51EfEc1
+ * WFLOW: 0xd3bF53DAC106A0290B0483EcBC89d40FcC961f3e
+ */
 const { ethers } = require("hardhat");
 require("dotenv").config({ path: "../.env" });
-// 从环境变量获取机器人私钥，如果未设置则使用部署者地址
+// Get bot private key from environment, use deployer address if not set
 const BOT_PRIVATE_KEY = process.env.BOT_PRIVATE_KEY || "";
 
 async function main() {
-  console.log("开始部署PersonalVault合约...");
+  console.log("Starting PersonalVault contract deployment...");
 
-  // 获取部署账户
+  // Get deployer account
   const [deployer] = await ethers.getSigners();
-  console.log(`使用部署账户: ${deployer.address}`);
+  console.log(`Using deployer account: ${deployer.address}`);
 
-  // 获取账户余额
+  // Get account balance
   const balance = await deployer.provider.getBalance(deployer.address);
-  console.log(`部署账户余额: ${ethers.formatEther(balance)} ETH`);
+  console.log(`Deployer balance: ${ethers.formatEther(balance)} FLOW`);
 
-  // 1. 部署PersonalVaultUpgradeableUniV2实现合约
-  console.log("\n部署PersonalVaultUpgradeableUniV2实现合约...");
-  const PersonalVaultUpgradeableUniV2 = await ethers.getContractFactory(
-    "PersonalVaultUpgradeableUniV2"
+  // 1. Deploy PersonalVaultUpgradeableV1 implementation contract
+  console.log("\nDeploying PersonalVaultUpgradeableV1 implementation...");
+  const PersonalVaultUpgradeableV1 = await ethers.getContractFactory(
+    "PersonalVaultUpgradeableV1"
   );
   const personalVaultImplementation =
-    await PersonalVaultUpgradeableUniV2.deploy();
+    await PersonalVaultUpgradeableV1.deploy();
   await personalVaultImplementation.waitForDeployment();
   const implementationAddress = await personalVaultImplementation.getAddress();
   console.log(
-    `PersonalVaultUpgradeableUniV2实现合约已部署到: ${implementationAddress}`
+    `PersonalVaultUpgradeableV1 implementation deployed to: ${implementationAddress}`
   );
 
-  // 确定机器人地址
+  // Determine bot address
   let botAddress;
   if (BOT_PRIVATE_KEY) {
     const botWallet = new ethers.Wallet(BOT_PRIVATE_KEY);
@@ -36,65 +44,65 @@ async function main() {
   } else {
     botAddress = deployer.address;
   }
-  console.log(`使用机器人地址: ${botAddress}`);
+  console.log(`Using bot address: ${botAddress}`);
 
-  // 2. 部署PersonalVaultFactoryUniV2合约
-  console.log("\n部署PersonalVaultFactoryUniV2合约...");
-  const PersonalVaultFactoryUniV2 = await ethers.getContractFactory(
-    "PersonalVaultFactoryUniV2"
+  // 2. Deploy PersonalVaultFactoryV1 contract
+  console.log("\nDeploying PersonalVaultFactoryV1...");
+  const PersonalVaultFactoryV1 = await ethers.getContractFactory(
+    "PersonalVaultFactoryV1"
   );
-  const personalVaultFactory = await PersonalVaultFactoryUniV2.deploy(
-    deployer.address, // 初始管理员
-    implementationAddress, // 实现合约地址
-    botAddress // 机器人地址
+  const personalVaultFactory = await PersonalVaultFactoryV1.deploy(
+    deployer.address, // Initial admin
+    implementationAddress, // Implementation address
+    botAddress // Bot address
   );
   await personalVaultFactory.waitForDeployment();
   const factoryAddress = await personalVaultFactory.getAddress();
-  console.log(`PersonalVaultFactoryUniV2合约已部署到: ${factoryAddress}`);
+  console.log(`PersonalVaultFactoryV1 deployed to: ${factoryAddress}`);
 
-  // 3. 验证合约部署
-  console.log("\n验证合约部署...");
+  // 3. Verify contract deployment
+  console.log("\nVerifying deployment...");
 
-  // 验证工厂合约
+  // Verify factory contract
   const factory = await ethers.getContractAt(
-    "PersonalVaultFactoryUniV2",
+    "PersonalVaultFactoryV1",
     factoryAddress
   );
   const storedImplementation = await factory.personalVaultImplementation();
-  console.log(`工厂合约存储的实现合约地址: ${storedImplementation}`);
+  console.log(`Factory stored implementation address: ${storedImplementation}`);
   console.log(
-    `实现合约地址匹配: ${storedImplementation === implementationAddress}`
+    `Implementation address match: ${storedImplementation === implementationAddress}`
   );
 
-  // 验证工厂合约的管理员
+  // Verify factory admin
   const adminRole = await factory.DEFAULT_ADMIN_ROLE();
   const hasAdminRole = await factory.hasRole(adminRole, deployer.address);
-  console.log(`部署者是否有管理员角色: ${hasAdminRole}`);
+  console.log(`Deployer has admin role: ${hasAdminRole}`);
 
-  // 验证机器人地址
+  // Verify bot address
   const storedBotAddress = await factory.botAddress();
-  console.log(`工厂合约存储的机器人地址: ${storedBotAddress}`);
-  console.log(`机器人地址匹配: ${storedBotAddress === botAddress}`);
+  console.log(`Factory stored bot address: ${storedBotAddress}`);
+  console.log(`Bot address match: ${storedBotAddress === botAddress}`);
 
-  // 验证机器人角色
+  // Verify bot role
   const botRole = await factory.BOT_ROLE();
   const hasBotRole = await factory.hasRole(botRole, botAddress);
-  console.log(`机器人是否有BOT_ROLE: ${hasBotRole}`);
+  console.log(`Bot has BOT_ROLE: ${hasBotRole}`);
 
-  // 4. 输出部署信息
-  console.log("\n部署完成！请将以下信息添加到.env文件中:");
+  // 4. Output deployment info
+  console.log("\nDeployment complete! Add the following to your .env file:");
   console.log(`FACTORY_ADDRESS=${factoryAddress}`);
   console.log(`PERSONAL_VAULT_IMPL_ADDRESS=${implementationAddress}`);
-  console.log("\n请确保还设置了以下环境变量:");
+  console.log("\nMake sure to also set these environment variables:");
   console.log(
-    "SWAP_ROUTER=0xf45AFe28fd5519d5f8C1d4787a4D5f724C0eFa4d  # Flow EVM 主网 PunchSwap V2 Router"
+    "SWAP_ROUTER=0xF9678db1CE83f6f51E5df348E2Cc842Ca51EfEc1  # Flow EVM PunchSwap V2 Router"
   );
   console.log(
-    "WRAPPED_NATIVE=0xd3bF53DAC106A0290B0483EcBC89d40FcC961f3e  # Flow EVM 主网 WFLOW"
+    "WRAPPED_NATIVE=0xd3bF53DAC106A0290B0483EcBC89d40FcC961f3e  # Flow EVM WFLOW"
   );
-  console.log("USER_PRIVATE_KEY=<用户钱包私钥>");
-  console.log("BOT_PRIVATE_KEY=<机器人钱包私钥>  # 或者使用BOT_ADDRESS");
-  console.log("NETWORK=flow  # 使用Flow EVM主网");
+  console.log("USER_PRIVATE_KEY=<user wallet private key>");
+  console.log("BOT_PRIVATE_KEY=<bot wallet private key>  # or use BOT_ADDRESS");
+  console.log("NETWORK=flow  # Use Flow EVM mainnet");
   console.log(
     "FLOW_RPC_URL=https://mainnet.evm.nodes.onflow.org  # Flow EVM RPC URL"
   );
@@ -103,6 +111,6 @@ async function main() {
 main()
   .then(() => process.exit(0))
   .catch((error) => {
-    console.error("部署失败:", error);
+    console.error("Deployment failed:", error);
     process.exit(1);
   });

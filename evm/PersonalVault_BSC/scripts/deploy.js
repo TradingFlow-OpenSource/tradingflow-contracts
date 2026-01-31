@@ -1,34 +1,62 @@
-// 部署PersonalVaultUpgradeableUniV3和PersonalVaultFactoryUniV3合约到BSC
+/**
+ * Deploy PersonalVault contracts to BSC (Binance Smart Chain)
+ * 
+ * Contract Version: V1
+ * DEX Integration: PancakeSwap V3 (Uniswap V3 Fork)
+ * Swap Router: 0x13f4EA83D0bd40E75C8222255bc855a974568Dd4
+ * WBNB: 0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c
+ * 
+ * Role Separation:
+ * - Vault Owner: Can upgrade contracts (UUPS), has DEFAULT_ADMIN_ROLE
+ * - Vault Admin: Has ADMIN_ROLE for settings (setRouterV2, etc.)
+ * - Bot: Has ORACLE_ROLE for executing trades
+ * - Investor: User who can deposit/withdraw (set at vault creation)
+ * 
+ * @see contracts/PersonalVaultUpgradeableV1.sol
+ * @see contracts/PersonalVaultFactoryV1.sol
+ */
 const { ethers } = require("hardhat");
 require("dotenv").config({ path: "../.env" });
-// 从环境变量获取机器人私钥，如果未设置则使用部署者地址
+
+// Get addresses from environment
+const VAULT_OWNER_PRIVATE_KEY = process.env.VAULT_OWNER_PRIVATE_KEY || "";
+const VAULT_ADMIN_PRIVATE_KEY = process.env.VAULT_ADMIN_PRIVATE_KEY || "";
 const BOT_PRIVATE_KEY = process.env.BOT_PRIVATE_KEY || "";
 
 async function main() {
-  console.log("开始部署PersonalVault合约到BSC...");
+  console.log("Starting PersonalVault V1 deployment to BSC...");
+  console.log("DEX: PancakeSwap V3");
+  console.log("");
 
-  // 获取部署账户
+  // Get deployer account
   const [deployer] = await ethers.getSigners();
-  console.log(`使用部署账户: ${deployer.address}`);
+  console.log(`Using deployer account: ${deployer.address}`);
 
-  // 获取账户余额
+  // Get account balance
   const balance = await deployer.provider.getBalance(deployer.address);
-  console.log(`部署账户余额: ${ethers.formatEther(balance)} ETH`);
+  console.log(`Deployer balance: ${ethers.formatEther(balance)} BNB`);
 
-  // 1. 部署PersonalVaultUpgradeableUniV3实现合约
-  console.log("\n部署PersonalVaultUpgradeableUniV3实现合约...");
-  const PersonalVaultUpgradeableUniV3 = await ethers.getContractFactory(
-    "PersonalVaultUpgradeableUniV3"
-  );
-  const personalVaultImplementation =
-    await PersonalVaultUpgradeableUniV3.deploy();
-  await personalVaultImplementation.waitForDeployment();
-  const implementationAddress = await personalVaultImplementation.getAddress();
-  console.log(
-    `PersonalVaultUpgradeableUniV3实现合约已部署到: ${implementationAddress}`
-  );
+  // Determine vault owner address (for UUPS upgrades)
+  let vaultOwner;
+  if (VAULT_OWNER_PRIVATE_KEY) {
+    const ownerWallet = new ethers.Wallet(VAULT_OWNER_PRIVATE_KEY);
+    vaultOwner = ownerWallet.address;
+  } else {
+    vaultOwner = deployer.address;
+  }
+  console.log(`Vault Owner (for upgrades): ${vaultOwner}`);
 
-  // 确定机器人地址
+  // Determine vault admin address (for settings)
+  let vaultAdmin;
+  if (VAULT_ADMIN_PRIVATE_KEY) {
+    const adminWallet = new ethers.Wallet(VAULT_ADMIN_PRIVATE_KEY);
+    vaultAdmin = adminWallet.address;
+  } else {
+    vaultAdmin = deployer.address;
+  }
+  console.log(`Vault Admin (for settings): ${vaultAdmin}`);
+
+  // Determine bot address
   let botAddress;
   if (BOT_PRIVATE_KEY) {
     const botWallet = new ethers.Wallet(BOT_PRIVATE_KEY);
@@ -36,71 +64,90 @@ async function main() {
   } else {
     botAddress = deployer.address;
   }
-  console.log(`使用机器人地址: ${botAddress}`);
+  console.log(`Bot (for trades): ${botAddress}`);
+  console.log("");
 
-  // 2. 部署PersonalVaultFactoryUniV3合约
-  console.log("\n部署PersonalVaultFactoryUniV3合约...");
-  const PersonalVaultFactoryUniV3 = await ethers.getContractFactory(
-    "PersonalVaultFactoryUniV3"
+  // 1. Deploy PersonalVaultUpgradeableV1 implementation
+  console.log("Deploying PersonalVaultUpgradeableV1 implementation...");
+  const PersonalVaultUpgradeableV1 = await ethers.getContractFactory(
+    "PersonalVaultUpgradeableV1"
   );
-  const personalVaultFactory = await PersonalVaultFactoryUniV3.deploy(
-    deployer.address, // 初始管理员
-    implementationAddress, // 实现合约地址
-    botAddress // 机器人地址
+  const personalVaultImplementation =
+    await PersonalVaultUpgradeableV1.deploy();
+  await personalVaultImplementation.waitForDeployment();
+  const implementationAddress = await personalVaultImplementation.getAddress();
+  console.log(
+    `PersonalVaultUpgradeableV1 implementation deployed to: ${implementationAddress}`
+  );
+
+  // 2. Deploy PersonalVaultFactoryV1 with separated roles
+  console.log("\nDeploying PersonalVaultFactoryV1...");
+  const PersonalVaultFactoryV1 = await ethers.getContractFactory(
+    "PersonalVaultFactoryV1"
+  );
+  const personalVaultFactory = await PersonalVaultFactoryV1.deploy(
+    vaultOwner,           // Vault owner address (for UUPS upgrades)
+    vaultAdmin,           // Vault admin address (for settings)
+    implementationAddress, // Implementation address
+    botAddress            // Bot address
   );
   await personalVaultFactory.waitForDeployment();
   const factoryAddress = await personalVaultFactory.getAddress();
-  console.log(`PersonalVaultFactoryUniV3合约已部署到: ${factoryAddress}`);
+  console.log(`PersonalVaultFactoryV1 deployed to: ${factoryAddress}`);
 
-  // 3. 验证合约部署
-  console.log("\n验证合约部署...");
+  // 3. Verify deployment
+  console.log("\nVerifying deployment...");
 
-  // 验证工厂合约
+  // Verify factory contract
   const factory = await ethers.getContractAt(
-    "PersonalVaultFactoryUniV3",
+    "PersonalVaultFactoryV1",
     factoryAddress
   );
+  
   const storedImplementation = await factory.personalVaultImplementation();
-  console.log(`工厂合约存储的实现合约地址: ${storedImplementation}`);
-  console.log(
-    `实现合约地址匹配: ${storedImplementation === implementationAddress}`
-  );
+  const storedVaultOwner = await factory.vaultOwner();
+  const storedVaultAdmin = await factory.vaultAdmin();
+  const storedBotAddress = await factory.botAddress();
+  
+  console.log(`Factory stored implementation: ${storedImplementation}`);
+  console.log(`Factory stored vaultOwner: ${storedVaultOwner}`);
+  console.log(`Factory stored vaultAdmin: ${storedVaultAdmin}`);
+  console.log(`Factory stored botAddress: ${storedBotAddress}`);
 
-  // 验证工厂合约的管理员
+  // Verify factory roles
   const adminRole = await factory.DEFAULT_ADMIN_ROLE();
   const hasAdminRole = await factory.hasRole(adminRole, deployer.address);
-  console.log(`部署者是否有管理员角色: ${hasAdminRole}`);
+  console.log(`\nDeployer has DEFAULT_ADMIN_ROLE on factory: ${hasAdminRole}`);
 
-  // 验证机器人地址
-  const storedBotAddress = await factory.botAddress();
-  console.log(`工厂合约存储的机器人地址: ${storedBotAddress}`);
-  console.log(`机器人地址匹配: ${storedBotAddress === botAddress}`);
+  const factoryAdminRole = await factory.ADMIN_ROLE();
+  const vaultAdminHasRole = await factory.hasRole(factoryAdminRole, vaultAdmin);
+  console.log(`Vault admin has ADMIN_ROLE on factory: ${vaultAdminHasRole}`);
 
-  // 验证机器人角色
   const botRole = await factory.BOT_ROLE();
   const hasBotRole = await factory.hasRole(botRole, botAddress);
-  console.log(`机器人是否有BOT_ROLE: ${hasBotRole}`);
+  console.log(`Bot has BOT_ROLE on factory: ${hasBotRole}`);
 
-  // 4. 输出部署信息
-  console.log("\n部署完成！请将以下信息添加到.env文件中:");
+  // 4. Output deployment info
+  console.log("\n" + "=".repeat(60));
+  console.log("DEPLOYMENT COMPLETE!");
+  console.log("=".repeat(60));
+  console.log("\nAdd the following to your .env file:");
   console.log(`FACTORY_ADDRESS=${factoryAddress}`);
   console.log(`PERSONAL_VAULT_IMPL_ADDRESS=${implementationAddress}`);
-  console.log("\n请确保还设置了以下环境变量:");
-  console.log(
-    "SWAP_ROUTER=0x1b81D678ffb9C0263b24A97847620C99d213eB14  # BSC PancakeSwap V3 SwapRouter"
-  );
-  console.log(
-    "WRAPPED_NATIVE=0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c  # BSC WBNB"
-  );
-  console.log("USER_PRIVATE_KEY=<用户钱包私钥>");
-  console.log("BOT_PRIVATE_KEY=<机器人钱包私钥>  # 或者使用BOT_ADDRESS");
-  console.log("NETWORK=bsc  # 使用BSC主网");
-  console.log("BSC_RPC_URL=https://bsc-dataseed1.binance.org/  # BSC RPC URL");
+  console.log("");
+  console.log("Role addresses configured:");
+  console.log(`VAULT_OWNER_ADDRESS=${vaultOwner}  # Can upgrade vaults`);
+  console.log(`VAULT_ADMIN_ADDRESS=${vaultAdmin}  # Can change vault settings`);
+  console.log(`BOT_ADDRESS=${botAddress}  # Can execute trades`);
+  console.log("");
+  console.log("Network configuration:");
+  console.log("SWAP_ROUTER=0x13f4EA83D0bd40E75C8222255bc855a974568Dd4  # BSC PancakeSwap V3");
+  console.log("WRAPPED_NATIVE=0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c  # BSC WBNB");
 }
 
 main()
   .then(() => process.exit(0))
   .catch((error) => {
-    console.error("部署失败:", error);
+    console.error("Deployment failed:", error);
     process.exit(1);
   });

@@ -1,114 +1,118 @@
-// 使用hardhat ethers创建金库
+/**
+ * Create a vault using hardhat ethers
+ * 
+ * Contract Version: V1
+ * Target Chain: Flow EVM
+ * DEX Integration: PunchSwap V2 (Uniswap V2 Fork)
+ */
 const { ethers } = require("hardhat");
 const { ZeroAddress } = require("ethers");
 require("dotenv").config({ path: "../.env" });
 
 async function main() {
-  console.log("开始创建金库...");
+  console.log("Starting vault creation...");
 
-  // 获取环境变量
+  // Get environment variables
   const factoryAddress = process.env.FACTORY_ADDRESS;
   const swapRouter = process.env.SWAP_ROUTER;
   const wrappedNative = process.env.WRAPPED_NATIVE;
 
-  // 验证必要的环境变量
+  // Validate required environment variables
   if (!factoryAddress || !swapRouter || !wrappedNative) {
-    console.error("缺少必要的环境变量");
-    console.log(`FACTORY_ADDRESS: ${factoryAddress || "未设置"}`);
-    console.log(`SWAP_ROUTER: ${swapRouter || "未设置"}`);
-    console.log(`WRAPPED_NATIVE: ${wrappedNative || "未设置"}`);
+    console.error("Missing required environment variables");
+    console.log(`FACTORY_ADDRESS: ${factoryAddress || "not set"}`);
+    console.log(`SWAP_ROUTER: ${swapRouter || "not set"}`);
+    console.log(`WRAPPED_NATIVE: ${wrappedNative || "not set"}`);
     process.exit(1);
   }
 
-  // 显示配置信息
-  console.log("配置信息:");
-  console.log(`- Factory地址: ${factoryAddress}`);
+  // Display configuration
+  console.log("Configuration:");
+  console.log(`- Factory address: ${factoryAddress}`);
   console.log(`- SwapRouter: ${swapRouter}`);
   console.log(`- WrappedNative: ${wrappedNative}`);
 
   try {
-    // 获取签名者
+    // Get signers
     const signers = await ethers.getSigners();
     const deployer = signers[0];
 
-    // 使用第二个签名者作为用户，如果不存在则使用第一个
+    // Use second signer as user if available, otherwise use deployer
     const user = signers.length > 1 ? signers[1] : deployer;
-    console.log(`- 部署者地址: ${deployer.address}`);
-    console.log(`- 用户地址: ${user.address}`);
+    console.log(`- Deployer address: ${deployer.address}`);
+    console.log(`- User address: ${user.address}`);
 
-    // 检查用户余额
+    // Check user balance
     const balance = await ethers.provider.getBalance(user.address);
-    console.log(`- 用户余额: ${ethers.formatEther(balance)} ETH`);
+    console.log(`- User balance: ${ethers.formatEther(balance)} FLOW`);
 
-    // 获取工厂合约中的机器人地址
+    // Get bot address from factory contract
     const factory = await ethers.getContractAt(
-      "PersonalVaultFactoryUniV2",
+      "PersonalVaultFactoryV1",
       factoryAddress
     );
     const botAddress = await factory.botAddress();
-    console.log(`- 机器人地址: ${botAddress}`);
+    console.log(`- Bot address: ${botAddress}`);
 
-    // 工厂合约实例已在上面创建
-
-    // 检查用户是否已有金库
+    // Check if user already has a vault
     const existingVault = await factory.getVault(user.address);
-    console.log(`- 现有金库地址: ${existingVault}`);
+    console.log(`- Existing vault address: ${existingVault}`);
 
     if (existingVault !== ZeroAddress) {
-      console.log("用户已有金库，无需创建");
+      console.log("User already has a vault, no need to create");
       process.exit(0);
     }
 
-    console.log("\n准备创建金库...");
+    console.log("\nPreparing to create vault...");
 
-    // 设置交易参数
-    const gasLimit = 5000000; // 设置足够高的gas限制
+    // Set transaction parameters
+    const gasLimit = 5000000; // Set high enough gas limit
 
-    // 创建金库
-    console.log("\n发送创建金库交易...");
+    // Create vault
+    console.log("\nSending create vault transaction...");
 
-    // 使用hardhat ethers发送交易
+    // Send transaction using hardhat ethers
     const tx = await factory
       .connect(user)
       .createVault(swapRouter, wrappedNative, { gasLimit });
 
-    console.log(`交易已发送，哈希: ${tx.hash}`);
-    console.log("等待交易确认...");
+    console.log(`Transaction sent, hash: ${tx.hash}`);
+    console.log("Waiting for confirmation...");
 
-    // 等待交易确认
+    // Wait for transaction confirmation
     const receipt = await tx.wait();
-    console.log(`交易已确认，区块号: ${receipt.blockNumber}`);
+    console.log(`Transaction confirmed, block number: ${receipt.blockNumber}`);
 
-    // 检查新创建的金库
+    // Check newly created vault
     const newVault = await factory.getVault(user.address);
-    console.log(`新金库地址: ${newVault}`);
+    console.log(`New vault address: ${newVault}`);
 
     if (newVault !== ZeroAddress) {
-      console.log("金库创建成功！");
-      console.log(`请将以下环境变量添加到.env文件中:`);
+      console.log("Vault created successfully!");
+      console.log(`Add the following to your .env file:`);
       console.log(`VAULT_ADDRESS=${newVault}`);
     } else {
-      console.log("金库创建失败，地址仍为零地址");
+      console.log("Vault creation failed, address is still zero");
     }
   } catch (error) {
-    console.error("创建金库时出错:", error);
+    console.error("Error creating vault:", error);
 
-    // 检查是否有详细的错误信息
+    // Check for detailed error info
     if (error.data) {
-      console.log(`错误数据: ${error.data}`);
+      console.log(`Error data: ${error.data}`);
     }
 
-    // 检查是否有错误原因
+    // Check for error reason
     if (error.reason) {
-      console.log(`错误原因: ${error.reason}`);
+      console.log(`Error reason: ${error.reason}`);
     }
 
-    // 检查交易失败的原因
+    // Check transaction failure details
     if (error.transaction) {
-      console.log(`交易哈希: ${error.transaction.hash}`);
-      console.log(`交易数据: ${error.transaction.data}`);
+      console.log(`Transaction hash: ${error.transaction.hash}`);
+      console.log(`Transaction data: ${error.transaction.data}`);
 
-      // 尝试解码错误
+      // Try to decode error
       try {
         const iface = new ethers.Interface([
           "function createVault(address _swapRouter, address _wrappedNative)",
@@ -116,9 +120,9 @@ async function main() {
         const decodedData = iface.parseTransaction({
           data: error.transaction.data,
         });
-        console.log("解码的交易数据:", decodedData);
+        console.log("Decoded transaction data:", decodedData);
       } catch (decodeError) {
-        console.log("无法解码交易数据:", decodeError.message);
+        console.log("Unable to decode transaction data:", decodeError.message);
       }
     }
 
@@ -126,10 +130,10 @@ async function main() {
   }
 }
 
-// 执行主函数
+// Execute main function
 main()
   .then(() => process.exit(0))
   .catch((error) => {
-    console.error("未捕获的错误:", error);
+    console.error("Uncaught error:", error);
     process.exit(1);
   });

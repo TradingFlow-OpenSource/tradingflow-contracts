@@ -4,13 +4,22 @@ pragma solidity ^0.8.20;
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/access/AccessControl.sol";
 import "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
-import "./PersonalVaultUpgradeableUniV2.sol";
+import "./PersonalVaultUpgradeableV1.sol";
 
 /**
- * @title PersonalVaultFactoryUniV2
- * @notice 个人金库工厂合约，用于创建和管理用户的个人金库，使用Uniswap V2/PunchSwap V2进行交换
+ * @title PersonalVaultFactoryV1
+ * @author TradingFlow
+ * @notice Personal vault factory contract for creating and managing user vaults
+ * 
+ * @dev Contract Version: V1
+ *      Target Chain: Flow EVM
+ *      DEX Integration: PunchSwap V2 (Uniswap V2 Fork)
+ *      
+ *      Recommended Deployment Parameters:
+ *      - Swap Router: 0xF9678db1CE83f6f51E5df348E2Cc842Ca51EfEc1 (PunchSwap V2)
+ *      - WFLOW: 0xd3bF53DAC106A0290B0483EcBC89d40FcC961f3e
  */
-contract PersonalVaultFactoryUniV2 is Ownable, AccessControl {
+contract PersonalVaultFactoryV1 is Ownable, AccessControl {
     // Role definitions
     bytes32 public constant ADMIN_ROLE = keccak256("ADMIN_ROLE");
     bytes32 public constant BOT_ROLE = keccak256("BOT_ROLE");
@@ -21,12 +30,20 @@ contract PersonalVaultFactoryUniV2 is Ownable, AccessControl {
     // Array of all vault addresses
     address payable[] public allVaults;
     
-    // 单一机器人地址
+    // Single bot address (for ORACLE_ROLE in vaults)
     address public botAddress;
+    
+    // Vault owner address (for UUPS upgrades) - platform controlled
+    address public vaultOwner;
+    
+    // Vault admin address (for ADMIN_ROLE settings) - platform controlled
+    address public vaultAdmin;
     
     // Events
     event VaultCreated(address indexed user, address indexed vault);
     event BotUpdated(address indexed oldBot, address indexed newBot);
+    event VaultOwnerUpdated(address indexed oldOwner, address indexed newOwner);
+    event VaultAdminUpdated(address indexed oldAdmin, address indexed newAdmin);
     
     // PersonalVault implementation contract address
     address public personalVaultImplementation;
@@ -35,24 +52,35 @@ contract PersonalVaultFactoryUniV2 is Ownable, AccessControl {
     
     /**
      * @notice Constructor
-     * @param initialAdmin The initial admin address
+     * @param _vaultOwner The address that will own all vaults (for UUPS upgrades)
+     * @param _vaultAdmin The address that will be admin of all vaults (for settings)
      * @param _personalVaultImplementation The PersonalVault implementation contract address
      * @param _botAddress The bot address that can execute trades
      */
-    constructor(address initialAdmin, address _personalVaultImplementation, address _botAddress) Ownable(msg.sender) {
-        require(initialAdmin != address(0), "Invalid admin address");
+    constructor(
+        address _vaultOwner,
+        address _vaultAdmin,
+        address _personalVaultImplementation, 
+        address _botAddress
+    ) Ownable(msg.sender) {
+        require(_vaultOwner != address(0), "Invalid vault owner");
+        require(_vaultAdmin != address(0), "Invalid vault admin");
         require(_personalVaultImplementation != address(0), "Invalid implementation");
         require(_botAddress != address(0), "Invalid bot address");
         
-        // Set up roles
+        // Set up factory roles
         _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
-        _grantRole(ADMIN_ROLE, initialAdmin);
+        _grantRole(ADMIN_ROLE, _vaultAdmin);
         
-        // 设置实现合约地址
+        // Store vault role addresses
+        vaultOwner = _vaultOwner;
+        vaultAdmin = _vaultAdmin;
+        
+        // Set implementation contract address
         personalVaultImplementation = _personalVaultImplementation;
         emit ImplementationChanged(_personalVaultImplementation);
         
-        // 设置机器人地址并授予BOT_ROLE
+        // Set bot address and grant BOT_ROLE
         botAddress = _botAddress;
         _grantRole(BOT_ROLE, _botAddress);
         emit BotUpdated(address(0), _botAddress);
@@ -70,8 +98,14 @@ contract PersonalVaultFactoryUniV2 is Ownable, AccessControl {
     
     /**
      * @notice Create a new personal vault for a user
-     * @param swapRouter The address of the Uniswap swap router
-     * @param wrappedNative The address of the wrapped native token (WETH/WFLOW)
+     * @dev Uses PunchSwap V2 Router for swap
+     *      Role separation:
+     *      - Owner (vaultOwner): Can upgrade contract via UUPS, has DEFAULT_ADMIN_ROLE
+     *      - Admin (vaultAdmin): Has ADMIN_ROLE for settings
+     *      - Bot (botAddress): Has ORACLE_ROLE for executing trades
+     *      - Investor (msg.sender): Can deposit/withdraw funds
+     * @param swapRouter The address of the swap router (recommended: 0xF9678db1CE83f6f51E5df348E2Cc842Ca51EfEc1)
+     * @param wrappedNative The address of the wrapped native token (WFLOW: 0xd3bF53DAC106A0290B0483EcBC89d40FcC961f3e)
      * @return The address of the newly created vault
      */
     function createVault(address swapRouter, address wrappedNative) external returns (address payable) {
@@ -79,13 +113,16 @@ contract PersonalVaultFactoryUniV2 is Ownable, AccessControl {
         require(personalVaultImplementation != address(0), "No implementation");
         require(wrappedNative != address(0), "Invalid wrapped native");
         require(botAddress != address(0), "Bot address not set");
+        require(vaultOwner != address(0), "Vault owner not set");
+        require(vaultAdmin != address(0), "Vault admin not set");
         
-        // Encode initialize data for proxy
+        // Encode initialize data for proxy with separated roles
         bytes memory data = abi.encodeWithSelector(
-            PersonalVaultUpgradeableUniV2.initialize.selector,
-            msg.sender, // investor
-            msg.sender, // admin
-            botAddress, // bot
+            PersonalVaultUpgradeableV1.initialize.selector,
+            msg.sender,   // investor - the user who can deposit/withdraw
+            vaultOwner,   // owner - platform controlled, can upgrade
+            vaultAdmin,   // admin - platform controlled, can change settings
+            botAddress,   // bot - can execute trades
             swapRouter,
             wrappedNative,
             address(this) // factory
@@ -100,13 +137,6 @@ contract PersonalVaultFactoryUniV2 is Ownable, AccessControl {
         // Store the vault address
         userVaults[msg.sender] = vaultAddress;
         allVaults.push(vaultAddress);
-        
-        // Grant the factory admin role on the vault
-        PersonalVaultUpgradeableUniV2 newVault = PersonalVaultUpgradeableUniV2(vaultAddress);
-        newVault.grantRole(newVault.DEFAULT_ADMIN_ROLE(), address(this));
-        
-        // 为新金库授予ORACLE_ROLE给机器人地址
-        newVault.grantRole(newVault.ORACLE_ROLE(), botAddress);
         
         emit VaultCreated(msg.sender, vaultAddress);
         
@@ -123,28 +153,62 @@ contract PersonalVaultFactoryUniV2 is Ownable, AccessControl {
         
         address oldBotAddress = botAddress;
         
-        // 撤销旧机器人的权限
+        // Revoke old bot's permissions
         if (oldBotAddress != address(0)) {
             _revokeRole(BOT_ROLE, oldBotAddress);
             
-            // 从所有金库中撤销旧机器人的权限
+            // Revoke old bot's permissions from all vaults
             for (uint i = 0; i < allVaults.length; i++) {
-                PersonalVaultUpgradeableUniV2 vault = PersonalVaultUpgradeableUniV2(payable(allVaults[i]));
+                PersonalVaultUpgradeableV1 vault = PersonalVaultUpgradeableV1(payable(allVaults[i]));
                 vault.revokeRole(vault.ORACLE_ROLE(), oldBotAddress);
             }
         }
         
-        // 设置新机器人地址
+        // Set new bot address
         botAddress = newBotAddress;
         _grantRole(BOT_ROLE, newBotAddress);
         
-        // 为所有金库授予新机器人的权限
+        // Grant new bot's permissions to all vaults
         for (uint i = 0; i < allVaults.length; i++) {
-            PersonalVaultUpgradeableUniV2 vault = PersonalVaultUpgradeableUniV2(payable(allVaults[i]));
+            PersonalVaultUpgradeableV1 vault = PersonalVaultUpgradeableV1(payable(allVaults[i]));
             vault.grantRole(vault.ORACLE_ROLE(), newBotAddress);
         }
         
         emit BotUpdated(oldBotAddress, newBotAddress);
+    }
+    
+    /**
+     * @notice Set the vault owner address (for new vaults only)
+     * @dev Only affects newly created vaults, existing vaults keep their owner
+     * @param newVaultOwner The new vault owner address
+     */
+    function setVaultOwner(address newVaultOwner) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        require(newVaultOwner != address(0), "Invalid vault owner");
+        require(newVaultOwner != vaultOwner, "Same as current owner");
+        
+        address oldVaultOwner = vaultOwner;
+        vaultOwner = newVaultOwner;
+        
+        emit VaultOwnerUpdated(oldVaultOwner, newVaultOwner);
+    }
+    
+    /**
+     * @notice Set the vault admin address (for new vaults only)
+     * @dev Only affects newly created vaults, existing vaults keep their admin
+     * @param newVaultAdmin The new vault admin address
+     */
+    function setVaultAdmin(address newVaultAdmin) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        require(newVaultAdmin != address(0), "Invalid vault admin");
+        require(newVaultAdmin != vaultAdmin, "Same as current admin");
+        
+        address oldVaultAdmin = vaultAdmin;
+        vaultAdmin = newVaultAdmin;
+        
+        // Update factory ADMIN_ROLE
+        _revokeRole(ADMIN_ROLE, oldVaultAdmin);
+        _grantRole(ADMIN_ROLE, newVaultAdmin);
+        
+        emit VaultAdminUpdated(oldVaultAdmin, newVaultAdmin);
     }
     
     /**
@@ -171,6 +235,4 @@ contract PersonalVaultFactoryUniV2 is Ownable, AccessControl {
     function getVaultCount() external view returns (uint256) {
         return allVaults.length;
     }
-    
-
 }

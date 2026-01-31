@@ -9,12 +9,23 @@ const DEPLOYER_PRIVATE_KEY = process.env.DEPLOYER_PRIVATE_KEY || "";
 const USER_PRIVATE_KEY = process.env.USER_PRIVATE_KEY || "";
 const BOT_PRIVATE_KEY = process.env.BOT_PRIVATE_KEY || "";
 
+// BSC keys - read from environment variables
+// ADDR 1 - Deployer/Factory, ADDR 2 - Admin/Bot, ADDR 3 - User
+// Set these in .env file:
+//   BSC_PRIVATE_KEY_1=<deployer_key>
+//   BSC_PRIVATE_KEY_2=<admin_bot_key>
+//   BSC_PRIVATE_KEY_3=<user_key>
+const BSC_DEPLOYER = process.env.BSC_PRIVATE_KEY_1?.replace(/^0x/, "") || "";
+const BSC_ADMIN = process.env.BSC_PRIVATE_KEY_2?.replace(/^0x/, "") || "";
+const BSC_USER = process.env.BSC_PRIVATE_KEY_3?.replace(/^0x/, "") || "";
+
 module.exports = {
   solidity: {
     compilers: [
       {
         version: "0.8.22",
         settings: {
+          viaIR: true,
           optimizer: {
             enabled: true,
             runs: 200,
@@ -39,31 +50,32 @@ module.exports = {
       blockGasLimit: 30000000,
       timeout: 600000,
     },
-    // BSC 主网配置
+    // BSC Mainnet Configuration
     bsc: {
       url: process.env.BSC_RPC_URL || "https://bsc-dataseed1.binance.org/",
-      // 使用三个不同的私钥，一个用于部署，一个用于用户，一个用于机器人
+      // Use STG keys: [Deployer, Admin/Bot, User]
       accounts: [
-        DEPLOYER_PRIVATE_KEY,
-        USER_PRIVATE_KEY,
-        BOT_PRIVATE_KEY,
-      ].filter((key) => key !== ""),
-      timeout: 300000, // 5分钟超时
+        BSC_DEPLOYER,   // ADDR 1: 0xc4df7125afff69b732982F5DeCd657E1520216d5
+        BSC_ADMIN,      // ADDR 2: 0x6dAd57C29d5958833c9b567ce1317eb7d53c27A0
+        BSC_USER,       // ADDR 3: 0x3cd24175844C695ba6c6A7Dd21D831F19821DCce
+      ],
+      timeout: 300000, // 5 minutes timeout
       gasPrice: "auto",
       chainId: 56,
     },
-    // BSC 测试网配置
+    // BSC Testnet Configuration
     bscTestnet: {
       url:
         process.env.BSC_TESTNET_RPC_URL ||
-        "https://bsc-testnet-dataseed.bnbchain.org",
+        "https://data-seed-prebsc-2-s1.bnbchain.org:8545",
+      // Use STG keys: [Deployer, Admin/Bot, User]
       accounts: [
-        DEPLOYER_PRIVATE_KEY,
-        USER_PRIVATE_KEY,
-        BOT_PRIVATE_KEY,
-      ].filter((key) => key !== ""),
-      timeout: 300000, // 5分钟超时
-      gasPrice: "auto",
+        BSC_DEPLOYER,   // ADDR 1: 0xc4df7125afff69b732982F5DeCd657E1520216d5
+        BSC_ADMIN,      // ADDR 2: 0x6dAd57C29d5958833c9b567ce1317eb7d53c27A0
+        BSC_USER,       // ADDR 3: 0x3cd24175844C695ba6c6A7Dd21D831F19821DCce
+      ],
+      timeout: 300000, // 5 minutes timeout
+      gasPrice: 10000000000, // 10 gwei
       chainId: 97,
     },
     // Flow EVM 网络配置 (保留供参考)
