@@ -8,7 +8,6 @@ import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol"
 import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import "@uniswap/v3-periphery/contracts/interfaces/ISwapRouter.sol";
 import "@uniswap/v3-periphery/contracts/libraries/TransferHelper.sol";
 
 /**
@@ -21,10 +20,23 @@ interface IWETH {
 }
 
 /**
- * @title IV3SwapRouter
- * @notice Interface for PancakeSwap V3 multi-hop swap (exactInput)
+ * @title ISmartRouter
+ * @notice Interface for PancakeSwap SmartRouter (V3 single-hop, NO deadline parameter)
+ * @dev SmartRouter address on BSC: 0x13f4EA83D0bd40E75C8222255bc855a974568Dd4
+ *      Function selector: 0x04e45aaf (different from Uniswap V3's 0x414bf389)
  */
-interface IV3SwapRouter {
+interface ISmartRouter {
+    struct ExactInputSingleParams {
+        address tokenIn;
+        address tokenOut;
+        uint24 fee;
+        address recipient;
+        uint256 amountIn;
+        uint256 amountOutMinimum;
+        uint160 sqrtPriceLimitX96;
+    }
+    function exactInputSingle(ExactInputSingleParams calldata params) external payable returns (uint256 amountOut);
+    
     struct ExactInputParams {
         bytes path;
         address recipient;
@@ -36,7 +48,8 @@ interface IV3SwapRouter {
 
 /**
  * @title IPancakeRouterV2
- * @notice Interface for PancakeSwap V2 Router
+ * @notice Interface for PancakeSwap V2 Router (legacy swaps)
+ * @dev V2 Router address on BSC: 0x10ED43C718714eb63d5aA57B78B54704E256024E
  */
 interface IPancakeRouterV2 {
     function swapExactTokensForTokens(
@@ -70,8 +83,9 @@ interface IPancakeRouterV2 {
  * 
  * @dev Contract Version: V1
  *      Target Chain: BSC (Binance Smart Chain)
- *      DEX Integration: PancakeSwap V3 (Uniswap V3 Fork)
- *      Swap Router: 0x13f4EA83D0bd40E75C8222255bc855a974568Dd4
+ *      DEX Integration: PancakeSwap SmartRouter + V2 Router
+ *      SmartRouter: 0x13f4EA83D0bd40E75C8222255bc855a974568Dd4 (V3 single/multi-hop)
+ *      V2 Router: 0x10ED43C718714eb63d5aA57B78B54704E256024E
  *      WBNB: 0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c
  * 
  * @dev Upgrade Notes:
@@ -86,7 +100,7 @@ contract PersonalVaultUpgradeableV1 is Initializable, OwnableUpgradeable, Reentr
     bytes32 public constant ORACLE_ROLE = keccak256("ORACLE_ROLE"); // bot or admin for trade
     bytes32 public constant ADMIN_ROLE = keccak256("ADMIN_ROLE");
     address public investor;
-    ISwapRouter public swapRouter;      // V3 SwapRouter (single-hop)
+    address public swapRouter;          // SmartRouter for V3 swaps (single-hop & multi-hop)
     address public routerV2;            // V2 Router for legacy swaps
     
     // --- Native Token Related ---
@@ -145,7 +159,7 @@ contract PersonalVaultUpgradeableV1 is Initializable, OwnableUpgradeable, Reentr
         require(_wrappedNative != address(0), "Invalid wrapped native");
         
         investor = _investor;
-        swapRouter = ISwapRouter(_swapRouter);
+        swapRouter = _swapRouter;
         WRAPPED_NATIVE = _wrappedNative;
         
         // Grant roles - Owner gets DEFAULT_ADMIN_ROLE to manage all roles
@@ -234,9 +248,9 @@ contract PersonalVaultUpgradeableV1 is Initializable, OwnableUpgradeable, Reentr
     }
 
     /**
-     * @notice PancakeSwap V3 Swap: Exact Input (fixed input for maximum output)
-     * @dev Uses PancakeSwap V3 Router for swap
-     *      Router address: 0x13f4EA83D0bd40E75C8222255bc855a974568Dd4
+     * @notice PancakeSwap SmartRouter V3 Swap: Exact Input Single (fixed input for maximum output)
+     * @dev Uses PancakeSwap SmartRouter for swap (NO deadline parameter)
+     *      SmartRouter address: 0x13f4EA83D0bd40E75C8222255bc855a974568Dd4
      */
     function swapExactInputSingle(
         address tokenIn,
@@ -247,58 +261,55 @@ contract PersonalVaultUpgradeableV1 is Initializable, OwnableUpgradeable, Reentr
         address feeRecipient,
         uint256 feeRate  // fee rate in millionths (1 = 0.0001%)
     ) external onlyRole(ORACLE_ROLE) nonReentrant returns (uint256 amountOut) {
+        require(swapRouter != address(0), "SwapRouter not set");
         require(balances[tokenIn] >= amountIn, "Insufficient balance");
         require(feeRate <= 1000000, "Fee rate too high"); // max fee rate 100%
         balances[tokenIn] -= amountIn;
         
-        // Set transaction deadline
-        uint deadline = block.timestamp + 600;
-        
         // Handle input token
         if (tokenIn == NATIVE_TOKEN) {
-            // If native token, use value parameter
-            ISwapRouter.ExactInputSingleParams memory params = ISwapRouter.ExactInputSingleParams({
+            // If native token, wrap first then swap
+            IWETH(WRAPPED_NATIVE).deposit{value: amountIn}();
+            TransferHelper.safeApprove(WRAPPED_NATIVE, swapRouter, amountIn);
+            ISmartRouter.ExactInputSingleParams memory params = ISmartRouter.ExactInputSingleParams({
                 tokenIn: WRAPPED_NATIVE, // Use WBNB address
                 tokenOut: tokenOut,
                 fee: fee,
                 recipient: address(this),
-                deadline: deadline,
                 amountIn: amountIn,
                 amountOutMinimum: amountOutMinimum,
                 sqrtPriceLimitX96: 0
             });
-            amountOut = swapRouter.exactInputSingle{value: amountIn}(params);
+            amountOut = ISmartRouter(swapRouter).exactInputSingle(params);
         } else if (tokenOut == NATIVE_TOKEN) {
             // If output is native token, swap to WBNB first then unwrap
-            TransferHelper.safeApprove(tokenIn, address(swapRouter), amountIn);
-            ISwapRouter.ExactInputSingleParams memory params = ISwapRouter.ExactInputSingleParams({
+            TransferHelper.safeApprove(tokenIn, swapRouter, amountIn);
+            ISmartRouter.ExactInputSingleParams memory params = ISmartRouter.ExactInputSingleParams({
                 tokenIn: tokenIn,
                 tokenOut: WRAPPED_NATIVE, // Output to WBNB
                 fee: fee,
                 recipient: address(this),
-                deadline: deadline,
                 amountIn: amountIn,
                 amountOutMinimum: amountOutMinimum,
                 sqrtPriceLimitX96: 0
             });
-            amountOut = swapRouter.exactInputSingle(params);
+            amountOut = ISmartRouter(swapRouter).exactInputSingle(params);
             
             // Convert WBNB to BNB
             IWETH(WRAPPED_NATIVE).withdraw(amountOut);
         } else {
             // Swap between ERC20 tokens
-            TransferHelper.safeApprove(tokenIn, address(swapRouter), amountIn);
-            ISwapRouter.ExactInputSingleParams memory params = ISwapRouter.ExactInputSingleParams({
+            TransferHelper.safeApprove(tokenIn, swapRouter, amountIn);
+            ISmartRouter.ExactInputSingleParams memory params = ISmartRouter.ExactInputSingleParams({
                 tokenIn: tokenIn,
                 tokenOut: tokenOut,
                 fee: fee,
                 recipient: address(this),
-                deadline: deadline,
                 amountIn: amountIn,
                 amountOutMinimum: amountOutMinimum,
                 sqrtPriceLimitX96: 0
             });
-            amountOut = swapRouter.exactInputSingle(params);
+            amountOut = ISmartRouter(swapRouter).exactInputSingle(params);
         }
         
         // Calculate fee amount (in millionths)
@@ -344,8 +355,8 @@ contract PersonalVaultUpgradeableV1 is Initializable, OwnableUpgradeable, Reentr
     }
 
     /**
-     * @notice PancakeSwap V3 Multi-Hop Swap: Exact Input with path encoding
-     * @dev Supports multi-hop swaps through multiple V3 pools
+     * @notice PancakeSwap SmartRouter V3 Multi-Hop Swap: Exact Input with path encoding
+     * @dev Supports multi-hop swaps through multiple V3 pools (NO deadline parameter)
      *      Path encoding: tokenIn + fee + tokenMid + fee + tokenOut (packed bytes)
      * @param path Encoded swap path (tokenIn, fee, tokenMid, fee, tokenOut...)
      * @param tokenIn First token in the path (for balance check and event)
@@ -364,6 +375,7 @@ contract PersonalVaultUpgradeableV1 is Initializable, OwnableUpgradeable, Reentr
         address feeRecipient,
         uint256 feeRate
     ) external onlyRole(ORACLE_ROLE) nonReentrant returns (uint256 amountOut) {
+        require(swapRouter != address(0), "SwapRouter not set");
         require(balances[tokenIn] >= amountIn, "Insufficient balance");
         require(feeRate <= 1000000, "Fee rate too high");
         balances[tokenIn] -= amountIn;
@@ -372,23 +384,23 @@ contract PersonalVaultUpgradeableV1 is Initializable, OwnableUpgradeable, Reentr
         if (tokenIn == NATIVE_TOKEN) {
             // For native token, we need to wrap it first
             IWETH(WRAPPED_NATIVE).deposit{value: amountIn}();
-            TransferHelper.safeApprove(WRAPPED_NATIVE, address(swapRouter), amountIn);
+            TransferHelper.safeApprove(WRAPPED_NATIVE, swapRouter, amountIn);
         } else {
-            TransferHelper.safeApprove(tokenIn, address(swapRouter), amountIn);
+            TransferHelper.safeApprove(tokenIn, swapRouter, amountIn);
         }
         
         // Determine actual output token address for router
         address actualTokenOut = tokenOut == NATIVE_TOKEN ? WRAPPED_NATIVE : tokenOut;
         
-        // Execute V3 multi-hop swap
-        IV3SwapRouter.ExactInputParams memory params = IV3SwapRouter.ExactInputParams({
+        // Execute V3 multi-hop swap via SmartRouter
+        ISmartRouter.ExactInputParams memory params = ISmartRouter.ExactInputParams({
             path: path,
             recipient: address(this),
             amountIn: amountIn,
             amountOutMinimum: amountOutMinimum
         });
         
-        amountOut = IV3SwapRouter(address(swapRouter)).exactInput(params);
+        amountOut = ISmartRouter(swapRouter).exactInput(params);
         
         // If output is native token, unwrap WBNB
         if (tokenOut == NATIVE_TOKEN) {
@@ -516,6 +528,16 @@ contract PersonalVaultUpgradeableV1 is Initializable, OwnableUpgradeable, Reentr
         emit TradeSignal(investor, tokenIn, tokenOut, amountIn, amountOutMinimum, amountOut, feeRecipient, feeAmount, block.timestamp);
     }
 
+    /**
+     * @notice Set SmartRouter address for V3 swaps
+     * @dev Can only be called by admin
+     * @param _swapRouter PancakeSwap SmartRouter address
+     */
+    function setSwapRouter(address _swapRouter) external onlyRole(ADMIN_ROLE) {
+        require(_swapRouter != address(0), "Invalid router");
+        swapRouter = _swapRouter;
+    }
+    
     /**
      * @notice Set V2 Router address
      * @dev Can only be called by admin
